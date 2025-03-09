@@ -1,6 +1,6 @@
-# Tab Sorter Chrome Extension
+# Tab Genius Chrome Extension
 
-A Chrome extension that helps you sort and organize your browser tabs efficiently.
+A smart Chrome extension that helps you sort and organize your browser tabs efficiently using AI.
 
 ## Features
 
@@ -25,7 +25,7 @@ A Chrome extension that helps you sort and organize your browser tabs efficientl
 2. Open Chrome and navigate to `chrome://extensions/`
 3. Enable "Developer mode" in the top-right corner
 4. Click "Load unpacked" and select the extension directory
-5. The Tab Sorter extension should now be installed and visible in your toolbar
+5. The Tab Genius extension should now be installed and visible in your toolbar
 
 ### Using Chrome's Built-in Gemini
 To use Chrome's built-in Gemini Nano model:
@@ -35,11 +35,12 @@ To use Chrome's built-in Gemini Nano model:
 
 ## Usage
 
-1. Click on the Tab Sorter icon in your Chrome toolbar
+1. Click on the Tab Genius icon in your Chrome toolbar
 2. Choose from the available options:
    - **Sort by Title**: Sorts all tabs alphabetically by title
    - **Sort by URL**: Sorts all tabs alphabetically by URL
    - **Organize by Content**: Groups tabs based on their content using AI
+   - **Ungroup All**: Removes all tab groupings
    - **Undo**: Restores tabs to their previous arrangement
 
 ### Using Ollama
@@ -54,7 +55,7 @@ To use Ollama for tab organization:
 ## Project Structure
 
 ```
-tab-sorter/
+tab-genius/
 ├── icons/                  # Extension icons
 ├── src/
 │   ├── css/                # Stylesheets

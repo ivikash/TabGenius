@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Tab Sorter",
+  "name": "Tab Genius",
   "version": "1.0",
-  "description": "Sort and organize Chrome tabs based on title, URL, or content",
+  "description": "Sort and organize Chrome tabs based on title, URL, or content using AI",
   "permissions": [
     "tabs",
     "tabGroups",
@@ -14,17 +14,19 @@
   "action": {
     "default_popup": "src/html/popup.html",
     "default_icon": {
-      "16": "icons/icon50.png",
-      "48": "icons/icon50.png",
-      "128": "icons/icon100.png"
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
   },
   "background": {
     "service_worker": "src/js/background.js"
   },
   "icons": {
-    "16": "icons/icon50.png",
-    "48": "icons/icon50.png",
-    "128": "icons/icon100.png"
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   }
 }

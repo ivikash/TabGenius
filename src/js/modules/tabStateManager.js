@@ -68,6 +68,29 @@ export class TabStateManager {
         }
       }
       
+      // Finally, restore tab groups if they existed
+      const tabsWithGroups = previousState.tabs.filter(tab => 
+        tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId !== -1
+      );
+      
+      // Group tabs by their previous groupId
+      const groupMap = new Map();
+      for (const tab of tabsWithGroups) {
+        if (!groupMap.has(tab.groupId)) {
+          groupMap.set(tab.groupId, []);
+        }
+        groupMap.get(tab.groupId).push(tab.id);
+      }
+      
+      // Restore each group
+      for (const [groupId, tabIds] of groupMap.entries()) {
+        try {
+          await this.createTabGroup(tabIds);
+        } catch (error) {
+          console.warn(`Could not restore group for tabs ${tabIds}:`, error);
+        }
+      }
+      
       // Clear the previous state after restoring
       this.previousState = null;
       
@@ -103,7 +126,7 @@ export class TabStateManager {
       const tabs = await this.getAllTabs();
       
       // Get all tabs that are in groups
-      const groupedTabs = tabs.filter(tab => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+      const groupedTabs = tabs.filter(tab => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId !== -1);
       
       if (groupedTabs.length === 0) {
         return;
@@ -138,6 +161,23 @@ export class TabStateManager {
           reject(new Error(chrome.runtime.lastError.message));
         } else {
           resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Create a tab group from a list of tab IDs
+   * @param {Array<number>} tabIds - Array of tab IDs to group
+   * @returns {Promise<number>} - ID of the created group
+   */
+  async createTabGroup(tabIds) {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.group({ tabIds }, (groupId) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(groupId);
         }
       });
     });

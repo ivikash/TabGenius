@@ -49,4 +49,26 @@ export class UIManager {
     statusElement.textContent = '';
     statusElement.className = 'status';
   }
+
+  /**
+   * Set the enabled state of a button
+   * @param {string} buttonId - ID of the button element
+   * @param {boolean} enabled - Whether the button should be enabled
+   */
+  setButtonEnabled(buttonId, enabled) {
+    const button = document.getElementById(buttonId);
+    if (button) {
+      button.disabled = !enabled;
+    }
+  }
+
+  /**
+   * Set the enabled state of multiple buttons
+   * @param {Object} buttonStates - Object mapping button IDs to enabled states
+   */
+  setButtonsState(buttonStates) {
+    for (const [buttonId, enabled] of Object.entries(buttonStates)) {
+      this.setButtonEnabled(buttonId, enabled);
+    }
+  }
 }

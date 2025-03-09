@@ -15,26 +15,74 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sort by title button
   document.getElementById('sortByTitle').addEventListener('click', async () => {
     try {
+      // Disable action buttons during operation
+      uiManager.setButtonsState({
+        'sortByTitle': false,
+        'sortByUrl': false,
+        'organizeByContent': false,
+        'ungroupAllTabs': false
+      });
+      
       uiManager.showStatus('Sorting tabs by title...', 'loading');
       await tabSorter.sortByTitle();
       uiManager.showStatus('Tabs sorted by title!', 'success');
-      document.getElementById('undoButton').disabled = false;
+      
+      // Enable undo button and re-enable action buttons
+      uiManager.setButtonsState({
+        'undoButton': true,
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error sorting by title:', error);
+      
+      // Re-enable action buttons
+      uiManager.setButtonsState({
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     }
   });
 
   // Sort by URL button
   document.getElementById('sortByUrl').addEventListener('click', async () => {
     try {
+      // Disable action buttons during operation
+      uiManager.setButtonsState({
+        'sortByTitle': false,
+        'sortByUrl': false,
+        'organizeByContent': false,
+        'ungroupAllTabs': false
+      });
+      
       uiManager.showStatus('Sorting tabs by URL...', 'loading');
       await tabSorter.sortByUrl();
       uiManager.showStatus('Tabs sorted by URL!', 'success');
-      document.getElementById('undoButton').disabled = false;
+      
+      // Enable undo button and re-enable action buttons
+      uiManager.setButtonsState({
+        'undoButton': true,
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error sorting by URL:', error);
+      
+      // Re-enable action buttons
+      uiManager.setButtonsState({
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     }
   });
 
@@ -47,6 +95,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Organize by content button
   document.getElementById('organizeByContent').addEventListener('click', async () => {
     try {
+      // Disable action buttons during operation
+      uiManager.setButtonsState({
+        'sortByTitle': false,
+        'sortByUrl': false,
+        'organizeByContent': false,
+        'ungroupAllTabs': false
+      });
+      
       const modelType = document.getElementById('model-select').value;
       let modelConfig = { type: modelType };
       
@@ -58,10 +114,66 @@ document.addEventListener('DOMContentLoaded', () => {
       uiManager.showStatus('Organizing tabs by content...', 'loading');
       await tabOrganizer.organizeByContent(modelConfig);
       uiManager.showStatus('Tabs organized by content!', 'success');
-      document.getElementById('undoButton').disabled = false;
+      
+      // Enable undo button and re-enable action buttons
+      uiManager.setButtonsState({
+        'undoButton': true,
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error organizing by content:', error);
+      
+      // Re-enable action buttons
+      uiManager.setButtonsState({
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
+    }
+  });
+  
+  // Ungroup all tabs button
+  document.getElementById('ungroupAllTabs').addEventListener('click', async () => {
+    try {
+      // Disable action buttons during operation
+      uiManager.setButtonsState({
+        'sortByTitle': false,
+        'sortByUrl': false,
+        'organizeByContent': false,
+        'ungroupAllTabs': false
+      });
+      
+      // Save current state before ungrouping
+      await tabStateManager.saveCurrentState();
+      
+      uiManager.showStatus('Removing all tab groups...', 'loading');
+      await tabStateManager.ungroupAllTabs();
+      uiManager.showStatus('All tab groups removed!', 'success');
+      
+      // Enable undo button and re-enable action buttons
+      uiManager.setButtonsState({
+        'undoButton': true,
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
+    } catch (error) {
+      uiManager.showStatus(`Error: ${error.message}`, 'error');
+      console.error('Error ungrouping tabs:', error);
+      
+      // Re-enable action buttons
+      uiManager.setButtonsState({
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     }
   });
   
@@ -73,18 +185,44 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       
+      // Disable all buttons during undo operation
+      uiManager.setButtonsState({
+        'sortByTitle': false,
+        'sortByUrl': false,
+        'organizeByContent': false,
+        'ungroupAllTabs': false,
+        'undoButton': false
+      });
+      
       uiManager.showStatus('Restoring previous tab state...', 'loading');
       const success = await tabStateManager.restorePreviousState();
       
       if (success) {
         uiManager.showStatus('Previous tab state restored!', 'success');
-        document.getElementById('undoButton').disabled = true;
+        // Disable undo button since we've used the saved state
+        uiManager.setButtonEnabled('undoButton', false);
       } else {
         uiManager.showStatus('Failed to restore previous state', 'error');
       }
+      
+      // Re-enable action buttons
+      uiManager.setButtonsState({
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error undoing action:', error);
+      
+      // Re-enable action buttons
+      uiManager.setButtonsState({
+        'sortByTitle': true,
+        'sortByUrl': true,
+        'organizeByContent': true,
+        'ungroupAllTabs': true
+      });
     }
   });
 });

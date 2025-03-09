@@ -74,8 +74,8 @@ async function analyzeWithGemini(prompt, tabId) {
     // Get tab content
     const content = await getTabContent(tabId);
     
-    // Trim content to 100 characters for efficiency
-    const trimmedContent = content.substring(0, 100);
+    // Trim content to 750 characters for efficiency
+    const trimmedContent = content.substring(0, 750);
     
     // Prepare prompt with content and predefined categories
     const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words.`;
@@ -135,8 +135,8 @@ async function analyzeWithOllama(url, model, prompt, tabId) {
     // Get tab content
     const content = await getTabContent(tabId);
     
-    // Trim content to 100 characters for efficiency
-    const trimmedContent = content.substring(0, 100);
+    // Trim content to 750 characters for efficiency
+    const trimmedContent = content.substring(0, 750);
     
     // Prepare prompt with content and predefined categories
     const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words.`;
