@@ -6,7 +6,9 @@
   "permissions": [
     "tabs",
     "tabGroups",
-    "scripting"
+    "scripting",
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"

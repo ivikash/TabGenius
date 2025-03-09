@@ -1,15 +1,14 @@
-import { AIModelFactory } from './aiModels/aiModelFactory.js';
-
 /**
- * Handles tab organization functionality
+ * Tab Organizer for Tab Genius extension
+ * Handles organizing tabs into groups based on content
  */
 export class TabOrganizer {
   constructor(tabStateManager) {
     this.tabStateManager = tabStateManager;
   }
-  
+
   /**
-   * Organize tabs by content using AI models
+   * Organize tabs by content using AI
    * @param {Object} modelConfig - Configuration for the AI model
    * @returns {Promise<void>}
    */
@@ -18,149 +17,252 @@ export class TabOrganizer {
       // Save current state before organizing
       await this.tabStateManager.saveCurrentState();
       
-      // Get all tabs
-      const tabs = await this.getAllTabs();
+      // Get all tabs in current window
+      const tabs = await chrome.tabs.query({ currentWindow: true });
       
-      // Skip if no tabs to organize
-      if (tabs.length === 0) {
-        throw new Error('No valid tabs to organize');
+      // Skip pinned tabs
+      const unpinnedTabs = tabs.filter(tab => !tab.pinned);
+      
+      if (unpinnedTabs.length === 0) {
+        throw new Error('No unpinned tabs to organize');
       }
       
-      // Create AI model instance
-      const aiModel = AIModelFactory.createModel(modelConfig);
+      // Show notification that analysis has started
+      chrome.runtime.sendMessage({
+        action: 'showNotification',
+        title: 'Tab Genius',
+        message: `Analyzing ${unpinnedTabs.length} tabs...`
+      });
       
-      // Process tabs in batches to avoid overwhelming the AI model
-      const tabGroups = await this.processTabsWithAI(tabs, aiModel);
+      // Analyze each tab and get categories
+      const tabCategories = await this.analyzeTabs(unpinnedTabs, modelConfig);
       
-      // Create tab groups based on AI categorization
-      await this.createTabGroups(tabGroups);
+      // Group tabs by category
+      await this.groupTabsByCategory(tabCategories);
       
+      return true;
     } catch (error) {
       console.error('Error organizing tabs by content:', error);
-      throw new Error('Failed to organize tabs by content');
+      throw error;
     }
   }
 
   /**
-   * Get all tabs from the current window, excluding chrome:// URLs and pinned tabs
-   * @returns {Promise<Array>} - Array of tab objects
+   * Analyze tabs using the selected AI model
+   * @param {Array} tabs - Array of tabs to analyze
+   * @param {Object} modelConfig - Configuration for the AI model
+   * @returns {Promise<Object>} - Object mapping tab IDs to categories
    */
-  async getAllTabs() {
-    return new Promise((resolve, reject) => {
-      chrome.tabs.query({ currentWindow: true }, (tabs) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          // Filter out chrome:// and chrome-extension:// URLs and pinned tabs
-          const filteredTabs = tabs.filter(tab => {
-            return !tab.url.startsWith('chrome://') && 
-                   !tab.url.startsWith('chrome-extension://') &&
-                   !tab.pinned;
-          });
-          resolve(filteredTabs);
-        }
-      });
-    });
-  }
-
-  /**
-   * Process tabs with AI to categorize them
-   * @param {Array} tabs - Array of tab objects
-   * @param {Object} aiModel - AI model instance
-   * @returns {Promise<Object>} - Object mapping category names to arrays of tab IDs
-   */
-  async processTabsWithAI(tabs, aiModel) {
-    const tabGroups = {};
+  async analyzeTabs(tabs, modelConfig) {
+    const tabCategories = {};
+    const prompt = "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name.";
     
-    // Process each tab
-    for (const tab of tabs) {
-      try {
-        // Get tab content and analyze with AI
-        const category = await this.getTabCategory(tab, aiModel);
-        
-        // Initialize category array if it doesn't exist
-        if (!tabGroups[category]) {
-          tabGroups[category] = [];
-        }
-        
-        // Add tab to appropriate category
-        tabGroups[category].push(tab.id);
-      } catch (error) {
-        console.warn(`Skipping tab "${tab.title}": ${error.message}`);
-      }
+    // Process tabs in batches to avoid overwhelming the browser
+    const batchSize = 5;
+    const batches = [];
+    
+    for (let i = 0; i < tabs.length; i += batchSize) {
+      batches.push(tabs.slice(i, i + batchSize));
     }
     
-    return tabGroups;
-  }
-
-  /**
-   * Get category for a tab using AI
-   * @param {Object} tab - Tab object
-   * @param {Object} aiModel - AI model instance
-   * @returns {Promise<string>} - Category name
-   */
-  async getTabCategory(tab, aiModel) {
-    try {
-      // Create prompt with tab information
-      const prompt = `Analyze this webpage and provide a category that best describes it:
-Title: ${tab.title}
-URL: ${tab.url}`;
-
-      // Get category from AI model
-      const category = await aiModel.getCategory(prompt, tab);
-      
-      // Clean up category (remove quotes, extra spaces, etc.)
-      return this.cleanCategory(category);
-    } catch (error) {
-      throw new Error(`Failed to categorize tab: ${error.message}`);
-    }
-  }
-
-  /**
-   * Clean up category name
-   * @param {string} category - Raw category from AI
-   * @returns {string} - Cleaned category name
-   */
-  cleanCategory(category) {
-    // The background script now handles the formatting,
-    // but we'll keep this as a safeguard
-    return category;
-  }
-
-  /**
-   * Create tab groups based on categories
-   * @param {Object} tabGroups - Object mapping category names to arrays of tab IDs
-   * @returns {Promise<void>}
-   */
-  async createTabGroups(tabGroups) {
-    for (const [category, tabIds] of Object.entries(tabGroups)) {
-      if (tabIds.length > 0) {
-        await this.createTabGroup(tabIds, category);
-      }
-    }
-  }
-
-  /**
-   * Create a tab group with the given tabs and name
-   * @param {Array} tabIds - Array of tab IDs
-   * @param {string} groupName - Name for the tab group
-   * @returns {Promise<void>}
-   */
-  async createTabGroup(tabIds, groupName) {
-    return new Promise((resolve, reject) => {
-      chrome.tabs.group({ tabIds }, (groupId) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          chrome.tabGroups.update(groupId, { title: groupName }, () => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve();
+    let processedCount = 0;
+    const totalCount = tabs.length;
+    
+    for (const batch of batches) {
+      const batchPromises = batch.map(async (tab) => {
+        try {
+          // Skip tabs that are likely to cause errors (error pages, etc.)
+          if (tab.url.includes('chrome-error://') || 
+              tab.status === 'loading' || 
+              tab.title.includes('ERR_') || 
+              tab.title.includes('Error')) {
+            
+            // Use the tab's domain as a fallback category
+            let domain = 'Unknown';
+            try {
+              if (tab.url.startsWith('http')) {
+                const url = new URL(tab.url);
+                domain = url.hostname.replace('www.', '').split('.')[0];
+                // Capitalize first letter
+                domain = domain.charAt(0).toUpperCase() + domain.slice(1);
+              }
+            } catch (e) {
+              console.error('Error parsing URL:', e);
             }
-          });
+            
+            tabCategories[tab.id] = domain || 'Error';
+            processedCount++;
+            
+            // Update progress notification every 5 tabs
+            if (processedCount % 5 === 0 || processedCount === totalCount) {
+              chrome.runtime.sendMessage({
+                action: 'showNotification',
+                title: 'Tab Genius',
+                message: `Analyzing tabs: ${processedCount}/${totalCount}`
+              });
+            }
+            
+            return;
+          }
+          
+          let result;
+          
+          if (modelConfig.type === 'gemini') {
+            // Use Chrome's Gemini API
+            result = await this.analyzeWithGemini(prompt, tab.id);
+          } else if (modelConfig.type === 'ollama') {
+            // Use Ollama API
+            result = await this.analyzeWithOllama(
+              modelConfig.url,
+              modelConfig.model,
+              prompt,
+              tab.id
+            );
+          } else {
+            throw new Error(`Unknown model type: ${modelConfig.type}`);
+          }
+          
+          if (result && result.category) {
+            tabCategories[tab.id] = result.category;
+          } else if (result && result.error) {
+            console.error(`Error analyzing tab ${tab.id}:`, result.error);
+            tabCategories[tab.id] = 'Misc';
+          } else {
+            tabCategories[tab.id] = 'Misc';
+          }
+          
+          processedCount++;
+          
+          // Update progress notification every 5 tabs
+          if (processedCount % 5 === 0 || processedCount === totalCount) {
+            chrome.runtime.sendMessage({
+              action: 'showNotification',
+              title: 'Tab Genius',
+              message: `Analyzing tabs: ${processedCount}/${totalCount}`
+            });
+          }
+        } catch (error) {
+          console.error(`Error analyzing tab ${tab.id}:`, error);
+          tabCategories[tab.id] = 'Misc';
+          processedCount++;
         }
       });
+      
+      await Promise.all(batchPromises);
+    }
+    
+    return tabCategories;
+  }
+
+  /**
+   * Analyze tab with Chrome's Gemini API
+   * @param {string} prompt - Prompt for the AI model
+   * @param {number} tabId - ID of the tab to analyze
+   * @returns {Promise<Object>} - Analysis result
+   */
+  async analyzeWithGemini(prompt, tabId) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        {
+          action: 'analyzeWithGemini',
+          prompt: prompt,
+          tabId: tabId
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else if (response && response.error) {
+            resolve({ category: 'Misc', error: response.error });
+          } else {
+            resolve(response);
+          }
+        }
+      );
     });
+  }
+
+  /**
+   * Analyze tab with Ollama API
+   * @param {string} url - URL for Ollama API
+   * @param {string} model - Model name for Ollama
+   * @param {string} prompt - Prompt for the AI model
+   * @param {number} tabId - ID of the tab to analyze
+   * @returns {Promise<Object>} - Analysis result
+   */
+  async analyzeWithOllama(url, model, prompt, tabId) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        {
+          action: 'analyzeWithOllama',
+          url: url,
+          model: model,
+          prompt: prompt,
+          tabId: tabId
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else if (response && response.error) {
+            resolve({ category: 'Misc', error: response.error });
+          } else {
+            resolve(response);
+          }
+        }
+      );
+    });
+  }
+
+  /**
+   * Group tabs by category
+   * @param {Object} tabCategories - Object mapping tab IDs to categories
+   * @returns {Promise<void>}
+   */
+  async groupTabsByCategory(tabCategories) {
+    // Get unique categories
+    const categories = [...new Set(Object.values(tabCategories))];
+    
+    // Create tab groups for each category
+    for (const category of categories) {
+      // Get tab IDs for this category
+      const tabIds = Object.entries(tabCategories)
+        .filter(([_, cat]) => cat === category)
+        .map(([tabId, _]) => parseInt(tabId));
+      
+      if (tabIds.length > 0) {
+        try {
+          // Create a group for these tabs
+          const groupId = await chrome.tabs.group({ tabIds });
+          
+          // Set group title and color
+          await chrome.tabGroups.update(groupId, {
+            title: category,
+            color: this.getCategoryColor(category)
+          });
+        } catch (error) {
+          console.error(`Error creating group for category ${category}:`, error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Get a consistent color for a category
+   * @param {string} category - Category name
+   * @returns {string} - Color name from Chrome's supported colors
+   */
+  getCategoryColor(category) {
+    // Chrome's supported colors
+    const colors = [
+      'grey', 'blue', 'red', 'yellow', 'green',
+      'pink', 'purple', 'cyan', 'orange'
+    ];
+    
+    // Generate a consistent index based on the category name
+    const hash = category.split('').reduce((acc, char) => {
+      return acc + char.charCodeAt(0);
+    }, 0);
+    
+    // Use modulo to get an index within the colors array
+    return colors[hash % colors.length];
   }
 }
