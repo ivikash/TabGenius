@@ -7,7 +7,7 @@ body {
 }
 
 .container {
-  width: 320px;
+  width: 350px;
   padding: 0;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
@@ -212,4 +212,130 @@ footer {
   font-size: 12px;
   color: #5f6368;
   margin: 0;
+}
+
+/* Category Manager Styles */
+.category-manager-toggle {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.text-button {
+  background: none;
+  border: none;
+  color: #4285f4;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.text-button:hover {
+  text-decoration: underline;
+}
+
+.text-button .material-icons {
+  font-size: 16px;
+  margin-right: 5px;
+}
+
+.category-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid #e8eaed;
+  border-radius: 4px;
+}
+
+.category-tag {
+  background-color: #e8f0fe;
+  border: 1px solid #d2e3fc;
+  border-radius: 16px;
+  color: #1a73e8;
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.category-tag:hover {
+  background-color: #d2e3fc;
+}
+
+.category-tag .material-icons {
+  font-size: 14px;
+  margin-left: 5px;
+  cursor: pointer;
+  color: #5f6368;
+}
+
+.category-tag .material-icons:hover {
+  color: #d93025;
+}
+
+.add-category {
+  display: flex;
+  margin-bottom: 15px;
+}
+
+.add-category input {
+  flex: 1;
+  margin: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.icon-button {
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 0 4px 4px 0;
+  padding: 0 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover {
+  background-color: #3367d6;
+}
+
+.category-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.category-actions button {
+  flex: 1;
+}
+
+/* Settings Styles */
+.settings h2 {
+  margin-bottom: 10px;
+}
+
+.setting-option {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.setting-option input[type="checkbox"] {
+  width: auto;
+  margin-right: 10px;
+}
+
+.setting-option label {
+  display: inline;
+  margin-top: 0;
+  cursor: pointer;
 }

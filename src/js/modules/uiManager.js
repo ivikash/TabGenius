@@ -6,6 +6,7 @@ export class UIManager {
   constructor() {
     this.statusElement = null;
     this.categoryManagerSection = null;
+    this.notificationsEnabled = true;
   }
 
   /**
@@ -22,6 +23,50 @@ export class UIManager {
     
     // Initialize Ollama options visibility
     this.toggleOllamaOptions(document.getElementById('model-select').value === 'ollama');
+    
+    // Initialize notifications checkbox
+    this.initNotificationsCheckbox();
+  }
+
+  /**
+   * Initialize notifications checkbox
+   */
+  async initNotificationsCheckbox() {
+    const notificationsCheckbox = document.getElementById('enableNotifications');
+    if (!notificationsCheckbox) return;
+    
+    // Load saved preference
+    try {
+      const result = await new Promise(resolve => {
+        chrome.storage.sync.get('notificationsEnabled', resolve);
+      });
+      
+      // Default to true if not set
+      this.notificationsEnabled = result.notificationsEnabled !== false;
+      notificationsCheckbox.checked = this.notificationsEnabled;
+    } catch (error) {
+      console.error('Error loading notification preferences:', error);
+      // Default to true
+      this.notificationsEnabled = true;
+      notificationsCheckbox.checked = true;
+    }
+    
+    // Add event listener
+    notificationsCheckbox.addEventListener('change', (e) => {
+      this.notificationsEnabled = e.target.checked;
+      this.saveNotificationPreference();
+    });
+  }
+
+  /**
+   * Save notification preference
+   */
+  saveNotificationPreference() {
+    try {
+      chrome.storage.sync.set({ 'notificationsEnabled': this.notificationsEnabled });
+    } catch (error) {
+      console.error('Error saving notification preference:', error);
+    }
   }
 
   /**
@@ -44,7 +89,7 @@ export class UIManager {
     this.statusElement.textContent = message;
     
     // Show notification for errors and success
-    if (type === 'error' || type === 'success') {
+    if ((type === 'error' || type === 'success') && this.notificationsEnabled) {
       this.showNotification(type === 'error' ? 'Error' : 'Success', message);
     }
     
@@ -64,6 +109,8 @@ export class UIManager {
    * @param {string} message - Notification message
    */
   showNotification(title, message) {
+    if (!this.notificationsEnabled) return;
+    
     chrome.runtime.sendMessage({
       action: 'showNotification',
       title: title,

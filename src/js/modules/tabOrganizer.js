@@ -27,12 +27,19 @@ export class TabOrganizer {
         throw new Error('No unpinned tabs to organize');
       }
       
-      // Show notification that analysis has started
-      chrome.runtime.sendMessage({
-        action: 'showNotification',
-        title: 'Tab Genius',
-        message: `Analyzing ${unpinnedTabs.length} tabs...`
+      // Check if notifications are enabled
+      const notificationPrefs = await new Promise(resolve => {
+        chrome.storage.sync.get('notificationsEnabled', resolve);
       });
+      
+      // Show notification that analysis has started if enabled
+      if (notificationPrefs.notificationsEnabled !== false) {
+        chrome.runtime.sendMessage({
+          action: 'showNotification',
+          title: 'Tab Genius',
+          message: `Analyzing ${unpinnedTabs.length} tabs...`
+        });
+      }
       
       // Analyze each tab and get categories
       const tabCategories = await this.analyzeTabs(unpinnedTabs, modelConfig);
@@ -68,6 +75,12 @@ export class TabOrganizer {
     let processedCount = 0;
     const totalCount = tabs.length;
     
+    // Check if notifications are enabled
+    const notificationPrefs = await new Promise(resolve => {
+      chrome.storage.sync.get('notificationsEnabled', resolve);
+    });
+    const notificationsEnabled = notificationPrefs.notificationsEnabled !== false;
+    
     for (const batch of batches) {
       const batchPromises = batch.map(async (tab) => {
         try {
@@ -93,8 +106,8 @@ export class TabOrganizer {
             tabCategories[tab.id] = domain || 'Error';
             processedCount++;
             
-            // Update progress notification every 5 tabs
-            if (processedCount % 5 === 0 || processedCount === totalCount) {
+            // Update progress notification every 5 tabs if notifications are enabled
+            if (notificationsEnabled && (processedCount % 5 === 0 || processedCount === totalCount)) {
               chrome.runtime.sendMessage({
                 action: 'showNotification',
                 title: 'Tab Genius',
@@ -133,8 +146,8 @@ export class TabOrganizer {
           
           processedCount++;
           
-          // Update progress notification every 5 tabs
-          if (processedCount % 5 === 0 || processedCount === totalCount) {
+          // Update progress notification every 5 tabs if notifications are enabled
+          if (notificationsEnabled && (processedCount % 5 === 0 || processedCount === totalCount)) {
             chrome.runtime.sendMessage({
               action: 'showNotification',
               title: 'Tab Genius',
