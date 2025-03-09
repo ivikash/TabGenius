@@ -162,6 +162,12 @@ export class TabOrganizer {
    */
   async analyzeWithGemini(prompt, tabId) {
     return new Promise((resolve, reject) => {
+      // Set a timeout to prevent getting stuck
+      const timeoutId = setTimeout(() => {
+        console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
+        resolve({ category: 'Misc', error: 'Analysis timeout' });
+      }, 5000); // 5 second timeout
+      
       chrome.runtime.sendMessage(
         {
           action: 'analyzeWithGemini',
@@ -169,15 +175,25 @@ export class TabOrganizer {
           tabId: tabId
         },
         (response) => {
+          // Clear the timeout since we got a response
+          clearTimeout(timeoutId);
+          
           if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
+            console.warn(`Error in Gemini analysis for tab ${tabId}:`, chrome.runtime.lastError);
+            resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
           } else if (response && response.error) {
+            console.warn(`Error response from Gemini for tab ${tabId}:`, response.error);
             resolve({ category: 'Misc', error: response.error });
+          } else if (!response) {
+            console.warn(`No response from Gemini for tab ${tabId}`);
+            resolve({ category: 'Misc', error: 'No response' });
           } else {
             resolve(response);
           }
         }
       );
+    });
+  }
     });
   }
 
@@ -191,6 +207,12 @@ export class TabOrganizer {
    */
   async analyzeWithOllama(url, model, prompt, tabId) {
     return new Promise((resolve, reject) => {
+      // Set a timeout to prevent getting stuck
+      const timeoutId = setTimeout(() => {
+        console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
+        resolve({ category: 'Misc', error: 'Analysis timeout' });
+      }, 10000); // 10 second timeout for Ollama (may be slower than Gemini)
+      
       chrome.runtime.sendMessage(
         {
           action: 'analyzeWithOllama',
@@ -200,10 +222,18 @@ export class TabOrganizer {
           tabId: tabId
         },
         (response) => {
+          // Clear the timeout since we got a response
+          clearTimeout(timeoutId);
+          
           if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
+            console.warn(`Error in Ollama analysis for tab ${tabId}:`, chrome.runtime.lastError);
+            resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
           } else if (response && response.error) {
+            console.warn(`Error response from Ollama for tab ${tabId}:`, response.error);
             resolve({ category: 'Misc', error: response.error });
+          } else if (!response) {
+            console.warn(`No response from Ollama for tab ${tabId}`);
+            resolve({ category: 'Misc', error: 'No response' });
           } else {
             resolve(response);
           }

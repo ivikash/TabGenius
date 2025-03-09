@@ -166,7 +166,7 @@ async function analyzeWithGemini(prompt, tabId) {
     }
     
     // Prepare prompt with content and predefined categories
-    const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words.`;
+    const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words in English.`;
     
     // Check if Chrome's Prompt API is available
     if (typeof ai !== 'undefined' && ai.languageModel) {
@@ -177,20 +177,39 @@ async function analyzeWithGemini(prompt, tabId) {
         
         if (capabilities.available !== 'no') {
           try {
-            // Create a session
-            const session = await ai.languageModel.create({
-              systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Capitalize the first letter of each word in the category. Always respond in English.'
+            // Create a session with a timeout
+            const sessionPromise = ai.languageModel.create({
+              systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Capitalize the first letter of each word in the category. Always respond in English only.'
             });
             
-            // Get response from Gemini
-            const response = await session.prompt(fullPrompt);
+            // Add timeout to session creation
+            const session = await Promise.race([
+              sessionPromise,
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Session creation timeout')), 3000)
+              )
+            ]);
+            
+            // Get response from Gemini with timeout
+            const responsePromise = session.prompt(fullPrompt);
+            const response = await Promise.race([
+              responsePromise,
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Prompt response timeout')), 5000)
+              )
+            ]);
+            
             console.log("Gemini response:", response);
             
             // Clean up and format the response
             const category = formatCategory(response);
             
             // Destroy the session to free resources
-            session.destroy();
+            try {
+              session.destroy();
+            } catch (destroyError) {
+              console.warn("Error destroying Gemini session:", destroyError);
+            }
             
             return { category };
           } catch (promptError) {
