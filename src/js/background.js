@@ -3,22 +3,32 @@
  * Handles API calls and tab content extraction
  */
 
+// Predefined categories for consistent grouping
+const PREDEFINED_CATEGORIES = [
+  'News', 'Shopping', 'Media', 'Education', 'Social', 
+  'Tech', 'Games', 'Finance', 'Travel', 'Food',
+  'Health', 'Sports', 'Entertainment', 'Business', 'Reference',
+  'Productivity', 'Development', 'Science', 'Arts', 'Misc'
+];
+
 // Function to simulate AI categorization when real AI is not available
 function simulateAICategory(content) {
   // Simple keyword-based categorization
   const contentLower = content.toLowerCase();
   
   const categories = [
-    { keywords: ['news', 'article', 'politics', 'world'], category: 'news' },
-    { keywords: ['shop', 'price', 'buy', 'cart', 'product'], category: 'shopping' },
-    { keywords: ['video', 'watch', 'stream', 'movie', 'episode'], category: 'media' },
-    { keywords: ['learn', 'course', 'education', 'tutorial'], category: 'education' },
-    { keywords: ['social', 'profile', 'friend', 'network'], category: 'social' },
-    { keywords: ['tech', 'software', 'programming', 'code', 'developer'], category: 'tech' },
-    { keywords: ['game', 'play', 'gaming'], category: 'games' },
-    { keywords: ['finance', 'money', 'bank', 'invest'], category: 'finance' },
-    { keywords: ['travel', 'hotel', 'flight', 'vacation'], category: 'travel' },
-    { keywords: ['food', 'recipe', 'restaurant', 'cook'], category: 'food' }
+    { keywords: ['news', 'article', 'politics', 'world'], category: 'News' },
+    { keywords: ['shop', 'price', 'buy', 'cart', 'product'], category: 'Shopping' },
+    { keywords: ['video', 'watch', 'stream', 'movie', 'episode'], category: 'Media' },
+    { keywords: ['learn', 'course', 'education', 'tutorial'], category: 'Education' },
+    { keywords: ['social', 'profile', 'friend', 'network'], category: 'Social' },
+    { keywords: ['tech', 'software', 'programming', 'code', 'developer'], category: 'Tech' },
+    { keywords: ['game', 'play', 'gaming'], category: 'Games' },
+    { keywords: ['finance', 'money', 'bank', 'invest'], category: 'Finance' },
+    { keywords: ['travel', 'hotel', 'flight', 'vacation'], category: 'Travel' },
+    { keywords: ['food', 'recipe', 'restaurant', 'cook'], category: 'Food' },
+    { keywords: ['health', 'medical', 'fitness', 'doctor'], category: 'Health' },
+    { keywords: ['sports', 'team', 'player', 'match', 'league'], category: 'Sports' }
   ];
   
   for (const item of categories) {
@@ -28,7 +38,7 @@ function simulateAICategory(content) {
   }
   
   // Default category if no keywords match
-  return 'misc';
+  return 'Misc';
 }
 
 // Listen for messages from popup or content scripts
@@ -64,17 +74,48 @@ async function analyzeWithGemini(prompt, tabId) {
     // Get tab content
     const content = await getTabContent(tabId);
     
-    // Prepare prompt with content
-    const fullPrompt = `${prompt}\n\nContent: ${content}`;
+    // Trim content to 100 characters for efficiency
+    const trimmedContent = content.substring(0, 100);
     
-    // Since Chrome's Gemini API isn't publicly available yet, we'll simulate a response
-    // In a real implementation, you would use the appropriate Chrome API for Gemini
-    console.log("Gemini prompt:", fullPrompt);
+    // Prepare prompt with content and predefined categories
+    const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words.`;
     
-    // Simulate AI categorization based on content
-    const category = simulateAICategory(content);
-    
-    return { category: category };
+    // Check if Chrome's Prompt API is available
+    if (typeof ai !== 'undefined' && ai.languageModel) {
+      try {
+        // Check capabilities
+        const capabilities = await ai.languageModel.capabilities();
+        console.log("Gemini capabilities:", capabilities);
+        
+        if (capabilities.available !== 'no') {
+          // Create a session
+          const session = await ai.languageModel.create({
+            systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Capitalize the first letter of each word in the category.'
+          });
+          
+          // Get response from Gemini
+          const response = await session.prompt(fullPrompt);
+          console.log("Gemini response:", response);
+          
+          // Clean up and format the response
+          const category = formatCategory(response);
+          
+          // Destroy the session to free resources
+          session.destroy();
+          
+          return { category };
+        } else {
+          console.warn("Gemini model not available, falling back to simulation");
+          return { category: simulateAICategory(trimmedContent) };
+        }
+      } catch (apiError) {
+        console.error("Error using Chrome's Prompt API:", apiError);
+        return { category: simulateAICategory(trimmedContent) };
+      }
+    } else {
+      console.warn("Chrome's Prompt API not available, falling back to simulation");
+      return { category: simulateAICategory(trimmedContent) };
+    }
   } catch (error) {
     console.error('Error analyzing with Gemini:', error);
     throw new Error('Failed to analyze with Gemini');
@@ -94,8 +135,11 @@ async function analyzeWithOllama(url, model, prompt, tabId) {
     // Get tab content
     const content = await getTabContent(tabId);
     
-    // Prepare prompt with content
-    const fullPrompt = `${prompt}\n\nContent: ${content}`;
+    // Trim content to 100 characters for efficiency
+    const trimmedContent = content.substring(0, 100);
+    
+    // Prepare prompt with content and predefined categories
+    const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words.`;
     
     console.log("Ollama prompt:", fullPrompt);
     
@@ -116,20 +160,46 @@ async function analyzeWithOllama(url, model, prompt, tabId) {
       if (!response.ok) {
         console.error(`Ollama API error: ${response.status}`);
         // Fall back to simulated response if Ollama is not available
-        return { category: simulateAICategory(content) };
+        return { category: simulateAICategory(trimmedContent) };
       }
       
       const data = await response.json();
-      return { category: data.response.trim() };
+      // Clean up and format the response
+      const category = formatCategory(data.response);
+      
+      return { category };
     } catch (error) {
       console.error('Error calling Ollama API:', error);
       // Fall back to simulated response if Ollama is not available
-      return { category: simulateAICategory(content) };
+      return { category: simulateAICategory(trimmedContent) };
     }
   } catch (error) {
     console.error('Error analyzing with Ollama:', error);
     throw new Error('Failed to analyze with Ollama');
   }
+}
+
+/**
+ * Format category name: capitalize, limit to 1-2 words, and match with predefined categories if possible
+ * @param {string} categoryText - Raw category text from AI
+ * @returns {string} - Formatted category name
+ */
+function formatCategory(categoryText) {
+  // Remove quotes, extra spaces, and limit to 1-2 words
+  const cleanedText = categoryText.replace(/["']/g, '').trim();
+  const words = cleanedText.split(/\s+/).slice(0, 2);
+  
+  // Capitalize each word
+  const formattedCategory = words.map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ).join(' ');
+  
+  // Try to match with predefined categories
+  const matchedCategory = PREDEFINED_CATEGORIES.find(category => 
+    category.toLowerCase() === formattedCategory.toLowerCase()
+  );
+  
+  return matchedCategory || formattedCategory;
 }
 
 /**

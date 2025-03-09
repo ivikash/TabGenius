@@ -102,11 +102,9 @@ export class TabOrganizer {
   async getTabCategory(tab, aiModel) {
     try {
       // Create prompt with tab information
-      const prompt = `Analyze this webpage and provide a single word that best categorizes it:
+      const prompt = `Analyze this webpage and provide a category that best describes it:
 Title: ${tab.title}
-URL: ${tab.url}
-
-Respond with only a single word category name.`;
+URL: ${tab.url}`;
 
       // Get category from AI model
       const category = await aiModel.getCategory(prompt, tab);
@@ -124,11 +122,9 @@ Respond with only a single word category name.`;
    * @returns {string} - Cleaned category name
    */
   cleanCategory(category) {
-    // Remove quotes, extra spaces, and limit to one word
-    return category.replace(/["']/g, '')
-                  .trim()
-                  .split(/\s+/)[0]
-                  .toLowerCase();
+    // The background script now handles the formatting,
+    // but we'll keep this as a safeguard
+    return category;
   }
 
   /**

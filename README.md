@@ -13,8 +13,10 @@ A Chrome extension that helps you sort and organize your browser tabs efficientl
 ### Tab Organization
 - Organize tabs into groups based on content using AI
 - Support for multiple AI models:
-  - Chrome's built-in Gemini model
+  - Chrome's built-in Gemini Nano model (using Chrome's Prompt API)
   - Ollama (local AI model)
+- Consistent categorization with capitalized 1-2 word group names
+- Undo functionality to restore previous tab arrangement
 
 ## Installation
 
@@ -24,6 +26,12 @@ A Chrome extension that helps you sort and organize your browser tabs efficientl
 3. Enable "Developer mode" in the top-right corner
 4. Click "Load unpacked" and select the extension directory
 5. The Tab Sorter extension should now be installed and visible in your toolbar
+
+### Using Chrome's Built-in Gemini
+To use Chrome's built-in Gemini Nano model:
+1. Make sure you're using Chrome version 131 or later
+2. The extension will automatically use Chrome's built-in Gemini if available
+3. Select "Chrome Gemini" from the AI Model dropdown
 
 ## Usage
 
