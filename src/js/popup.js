@@ -2,15 +2,24 @@ import { TabSorter } from './modules/tabSorter.js';
 import { TabOrganizer } from './modules/tabOrganizer.js';
 import { UIManager } from './modules/uiManager.js';
 import { TabStateManager } from './modules/tabStateManager.js';
+import { CategoryManager } from './modules/categoryManager.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const tabStateManager = new TabStateManager();
   const tabSorter = new TabSorter(tabStateManager);
   const tabOrganizer = new TabOrganizer(tabStateManager);
   const uiManager = new UIManager();
+  const categoryManager = new CategoryManager();
 
   // Initialize UI components
   uiManager.init();
+  
+  // Initialize category manager
+  try {
+    await categoryManager.init();
+  } catch (error) {
+    console.error('Error initializing category manager:', error);
+  }
 
   // Sort by title button
   document.getElementById('sortByTitle').addEventListener('click', async () => {

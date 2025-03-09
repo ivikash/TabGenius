@@ -31,13 +31,16 @@ export class OllamaModel {
       });
       
       if (result.error) {
-        throw new Error(result.error);
+        console.warn(`Ollama error for tab "${tab.title}": ${result.error}`);
+        // Don't throw error, return the category from fallback mechanism
+        return result.category || 'Uncategorized';
       }
       
-      return result.category || 'misc';
+      return result.category || 'Misc';
     } catch (error) {
       console.error('Error using Ollama model:', error);
-      throw new Error('Failed to analyze with Ollama');
+      // Don't throw error, return a default category
+      return 'Uncategorized';
     }
   }
 }

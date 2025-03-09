@@ -18,13 +18,16 @@ export class GeminiModel {
       });
       
       if (result.error) {
-        throw new Error(result.error);
+        console.warn(`Gemini error for tab "${tab.title}": ${result.error}`);
+        // Don't throw error, return the category from fallback mechanism
+        return result.category || 'Uncategorized';
       }
       
-      return result.category || 'misc';
+      return result.category || 'Misc';
     } catch (error) {
       console.error('Error using Gemini model:', error);
-      throw new Error('Failed to analyze with Gemini');
+      // Don't throw error, return a default category
+      return 'Uncategorized';
     }
   }
 }
