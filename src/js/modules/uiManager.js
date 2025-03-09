@@ -16,6 +16,12 @@ export class UIManager {
     this.statusElement = document.getElementById('status');
     this.categoryManagerSection = document.getElementById('categoryManagerSection');
     
+    // Set default placeholder status
+    if (this.statusElement) {
+      this.statusElement.textContent = 'Ready to organize your tabs!';
+      this.statusElement.classList.add('placeholder');
+    }
+    
     // Initialize toggle for category manager
     document.getElementById('toggleCategoryManager').addEventListener('click', () => {
       this.toggleCategoryManager();
@@ -97,7 +103,9 @@ export class UIManager {
     if (type === 'success') {
       setTimeout(() => {
         if (this.statusElement.textContent === message) {
-          this.statusElement.textContent = '';
+          // Reset to placeholder text
+          this.statusElement.textContent = 'Ready to organize your tabs!';
+          this.statusElement.className = 'status placeholder';
         }
       }, 3000);
     }

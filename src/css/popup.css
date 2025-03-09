@@ -175,6 +175,13 @@ label {
   min-height: 20px;
 }
 
+.status.placeholder {
+  color: #80868b;
+  font-style: italic;
+  background-color: #f8f9fa;
+  border: 1px dashed #dadce0;
+}
+
 .status.success {
   background-color: #e6f4ea;
   color: #137333;
