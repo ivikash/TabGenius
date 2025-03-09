@@ -34,7 +34,7 @@
       <div class="model-selection">
         <label for="model-select">AI Model:</label>
         <select id="model-select">
-          <option value="gemini">Chrome Gemini</option>
+          <option value="gemini">Google Gemini</option>
           <option value="ollama">Ollama</option>
         </select>
       </div>
@@ -50,6 +50,32 @@
         </button>
         <button id="ungroupAllTabs" class="secondary-button">
           <i class="material-icons">clear_all</i> Ungroup All
+        </button>
+      </div>
+      <div class="category-manager-toggle">
+        <button id="toggleCategoryManager" class="text-button">
+          <i class="material-icons">settings</i> Manage Categories
+        </button>
+      </div>
+    </div>
+    
+    <div id="categoryManagerSection" class="section hidden">
+      <h2><i class="material-icons">label</i> Category Manager</h2>
+      <div class="category-tags" id="categoryTags">
+        <!-- Category tags will be added here dynamically -->
+      </div>
+      <div class="add-category">
+        <input type="text" id="newCategoryInput" placeholder="Add new category">
+        <button id="addCategoryBtn" class="icon-button">
+          <i class="material-icons">add_circle</i>
+        </button>
+      </div>
+      <div class="category-actions">
+        <button id="saveCategoriesBtn" class="primary-button">
+          <i class="material-icons">save</i> Save Categories
+        </button>
+        <button id="resetCategoriesBtn" class="secondary-button">
+          <i class="material-icons">refresh</i> Reset to Default
         </button>
       </div>
     </div>

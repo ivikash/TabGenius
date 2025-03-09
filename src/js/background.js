@@ -140,7 +140,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 /**
- * Analyze tab content with Chrome's Gemini API
+ * Analyze tab content with Google's Gemini API
  * @param {string} prompt - Prompt for the AI model
  * @param {number} tabId - ID of the tab to analyze
  * @returns {Promise<Object>} - Analysis result
@@ -168,7 +168,7 @@ async function analyzeWithGemini(prompt, tabId) {
     // Prepare prompt with content and predefined categories
     const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words in English.`;
     
-    // Check if Chrome's Prompt API is available
+    // Check if Google's Gemini API is available
     if (typeof ai !== 'undefined' && ai.languageModel) {
       try {
         // Check capabilities

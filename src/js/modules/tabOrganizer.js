@@ -108,7 +108,7 @@ export class TabOrganizer {
           let result;
           
           if (modelConfig.type === 'gemini') {
-            // Use Chrome's Gemini API
+            // Use Google's Gemini API
             result = await this.analyzeWithGemini(prompt, tab.id);
           } else if (modelConfig.type === 'ollama') {
             // Use Ollama API
@@ -155,7 +155,7 @@ export class TabOrganizer {
   }
 
   /**
-   * Analyze tab with Chrome's Gemini API
+   * Analyze tab with Google's Gemini API
    * @param {string} prompt - Prompt for the AI model
    * @param {number} tabId - ID of the tab to analyze
    * @returns {Promise<Object>} - Analysis result
@@ -194,8 +194,8 @@ export class TabOrganizer {
       );
     });
   }
-    });
-  }
+
+  
 
   /**
    * Analyze tab with Ollama API
