@@ -5,7 +5,8 @@
   "description": "Sort and organize Chrome tabs based on title, URL, or content",
   "permissions": [
     "tabs",
-    "tabGroups"
+    "tabGroups",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"

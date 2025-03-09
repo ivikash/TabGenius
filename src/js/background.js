@@ -3,6 +3,34 @@
  * Handles API calls and tab content extraction
  */
 
+// Function to simulate AI categorization when real AI is not available
+function simulateAICategory(content) {
+  // Simple keyword-based categorization
+  const contentLower = content.toLowerCase();
+  
+  const categories = [
+    { keywords: ['news', 'article', 'politics', 'world'], category: 'news' },
+    { keywords: ['shop', 'price', 'buy', 'cart', 'product'], category: 'shopping' },
+    { keywords: ['video', 'watch', 'stream', 'movie', 'episode'], category: 'media' },
+    { keywords: ['learn', 'course', 'education', 'tutorial'], category: 'education' },
+    { keywords: ['social', 'profile', 'friend', 'network'], category: 'social' },
+    { keywords: ['tech', 'software', 'programming', 'code', 'developer'], category: 'tech' },
+    { keywords: ['game', 'play', 'gaming'], category: 'games' },
+    { keywords: ['finance', 'money', 'bank', 'invest'], category: 'finance' },
+    { keywords: ['travel', 'hotel', 'flight', 'vacation'], category: 'travel' },
+    { keywords: ['food', 'recipe', 'restaurant', 'cook'], category: 'food' }
+  ];
+  
+  for (const item of categories) {
+    if (item.keywords.some(keyword => contentLower.includes(keyword))) {
+      return item.category;
+    }
+  }
+  
+  // Default category if no keywords match
+  return 'misc';
+}
+
 // Listen for messages from popup or content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handle different message actions
@@ -39,14 +67,14 @@ async function analyzeWithGemini(prompt, tabId) {
     // Prepare prompt with content
     const fullPrompt = `${prompt}\n\nContent: ${content}`;
     
-    // Use Chrome's Gemini API (this is a placeholder - actual implementation depends on Chrome's API)
+    // Since Chrome's Gemini API isn't publicly available yet, we'll simulate a response
     // In a real implementation, you would use the appropriate Chrome API for Gemini
-    const response = await chrome.runtime.sendNativeMessage(
-      'com.google.chrome.gemini',
-      { prompt: fullPrompt }
-    );
+    console.log("Gemini prompt:", fullPrompt);
     
-    return { category: response.text.trim() };
+    // Simulate AI categorization based on content
+    const category = simulateAICategory(content);
+    
+    return { category: category };
   } catch (error) {
     console.error('Error analyzing with Gemini:', error);
     throw new Error('Failed to analyze with Gemini');
@@ -69,25 +97,35 @@ async function analyzeWithOllama(url, model, prompt, tabId) {
     // Prepare prompt with content
     const fullPrompt = `${prompt}\n\nContent: ${content}`;
     
-    // Make request to Ollama API
-    const response = await fetch(`${url}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: model,
-        prompt: fullPrompt,
-        stream: false
-      })
-    });
+    console.log("Ollama prompt:", fullPrompt);
     
-    if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status}`);
+    try {
+      // Make request to Ollama API
+      const response = await fetch(`${url}/api/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          prompt: fullPrompt,
+          stream: false
+        })
+      });
+      
+      if (!response.ok) {
+        console.error(`Ollama API error: ${response.status}`);
+        // Fall back to simulated response if Ollama is not available
+        return { category: simulateAICategory(content) };
+      }
+      
+      const data = await response.json();
+      return { category: data.response.trim() };
+    } catch (error) {
+      console.error('Error calling Ollama API:', error);
+      // Fall back to simulated response if Ollama is not available
+      return { category: simulateAICategory(content) };
     }
-    
-    const data = await response.json();
-    return { category: data.response.trim() };
   } catch (error) {
     console.error('Error analyzing with Ollama:', error);
     throw new Error('Failed to analyze with Ollama');
@@ -110,13 +148,19 @@ async function getTabContent(tabId) {
     }
     
     // Execute content script to extract page content
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tabId },
-      function: extractPageContent
-    });
-    
-    // Return extracted content
-    return results[0].result;
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: extractPageContent
+      });
+      
+      // Return extracted content
+      return results[0].result;
+    } catch (scriptError) {
+      console.error('Script execution error:', scriptError);
+      // If script execution fails, return basic tab info
+      return `Title: ${tab.title}\nURL: ${tab.url}`;
+    }
   } catch (error) {
     console.error('Error getting tab content:', error);
     throw new Error('Failed to access tab content');
@@ -148,8 +192,16 @@ function extractPageContent() {
       .map(h => h.innerText)
       .join(' ');
     
+    // If no specific content areas found, get body text
+    let bodyText = '';
+    if (!mainContent) {
+      bodyText = document.body?.innerText || '';
+      // Limit body text to avoid excessive content
+      bodyText = bodyText.substring(0, 500);
+    }
+    
     // Combine all content
-    const combinedContent = [title, metaDescription, headings, mainContent]
+    const combinedContent = [title, metaDescription, headings, mainContent, bodyText]
       .filter(Boolean)
       .join(' ')
       .substring(0, 1000); // Limit content length

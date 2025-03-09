@@ -8,6 +8,7 @@ A Chrome extension that helps you sort and organize your browser tabs efficientl
 - Sort tabs alphabetically by title
 - Sort tabs alphabetically by URL
 - Pinned tabs are preserved and not sorted
+- Undo functionality to restore previous tab arrangement
 
 ### Tab Organization
 - Organize tabs into groups based on content using AI
@@ -31,6 +32,7 @@ A Chrome extension that helps you sort and organize your browser tabs efficientl
    - **Sort by Title**: Sorts all tabs alphabetically by title
    - **Sort by URL**: Sorts all tabs alphabetically by URL
    - **Organize by Content**: Groups tabs based on their content using AI
+   - **Undo**: Restores tabs to their previous arrangement
 
 ### Using Ollama
 
@@ -57,6 +59,7 @@ tab-sorter/
 │       └── modules/        # Modular components
 │           ├── tabSorter.js        # Tab sorting functionality
 │           ├── tabOrganizer.js     # Tab organization functionality
+│           ├── tabStateManager.js  # Tab state management for undo
 │           ├── uiManager.js        # UI management
 │           └── aiModels/           # AI model implementations
 │               ├── aiModelFactory.js  # Factory for creating AI models

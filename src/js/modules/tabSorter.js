@@ -2,12 +2,19 @@
  * Handles tab sorting functionality
  */
 export class TabSorter {
+  constructor(tabStateManager) {
+    this.tabStateManager = tabStateManager;
+  }
+
   /**
    * Sort all tabs by title alphabetically
    * @returns {Promise<void>}
    */
   async sortByTitle() {
     try {
+      // Save current state before sorting
+      await this.tabStateManager.saveCurrentState();
+      
       const tabs = await this.getAllTabs();
       const sortedTabs = this.sortTabsByProperty(tabs, 'title');
       await this.reorderTabs(sortedTabs);
@@ -23,6 +30,9 @@ export class TabSorter {
    */
   async sortByUrl() {
     try {
+      // Save current state before sorting
+      await this.tabStateManager.saveCurrentState();
+      
       const tabs = await this.getAllTabs();
       const sortedTabs = this.sortTabsByProperty(tabs, 'url');
       await this.reorderTabs(sortedTabs);

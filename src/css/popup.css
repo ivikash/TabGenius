@@ -100,3 +100,24 @@ label {
   background-color: #e9ecef;
   color: #495057;
 }
+
+.actions {
+  margin-top: 15px;
+  border-top: 1px solid #ddd;
+  padding-top: 15px;
+}
+
+.secondary-button {
+  background-color: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
+
+.secondary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

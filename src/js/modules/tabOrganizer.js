@@ -4,6 +4,10 @@ import { AIModelFactory } from './aiModels/aiModelFactory.js';
  * Handles tab organization functionality
  */
 export class TabOrganizer {
+  constructor(tabStateManager) {
+    this.tabStateManager = tabStateManager;
+  }
+  
   /**
    * Organize tabs by content using AI models
    * @param {Object} modelConfig - Configuration for the AI model
@@ -11,6 +15,9 @@ export class TabOrganizer {
    */
   async organizeByContent(modelConfig) {
     try {
+      // Save current state before organizing
+      await this.tabStateManager.saveCurrentState();
+      
       // Get all tabs
       const tabs = await this.getAllTabs();
       

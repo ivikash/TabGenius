@@ -1,10 +1,12 @@
 import { TabSorter } from './modules/tabSorter.js';
 import { TabOrganizer } from './modules/tabOrganizer.js';
 import { UIManager } from './modules/uiManager.js';
+import { TabStateManager } from './modules/tabStateManager.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const tabSorter = new TabSorter();
-  const tabOrganizer = new TabOrganizer();
+  const tabStateManager = new TabStateManager();
+  const tabSorter = new TabSorter(tabStateManager);
+  const tabOrganizer = new TabOrganizer(tabStateManager);
   const uiManager = new UIManager();
 
   // Initialize UI components
@@ -16,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
       uiManager.showStatus('Sorting tabs by title...', 'loading');
       await tabSorter.sortByTitle();
       uiManager.showStatus('Tabs sorted by title!', 'success');
+      document.getElementById('undoButton').disabled = false;
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error sorting by title:', error);
@@ -28,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
       uiManager.showStatus('Sorting tabs by URL...', 'loading');
       await tabSorter.sortByUrl();
       uiManager.showStatus('Tabs sorted by URL!', 'success');
+      document.getElementById('undoButton').disabled = false;
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error sorting by URL:', error);
@@ -54,9 +58,33 @@ document.addEventListener('DOMContentLoaded', () => {
       uiManager.showStatus('Organizing tabs by content...', 'loading');
       await tabOrganizer.organizeByContent(modelConfig);
       uiManager.showStatus('Tabs organized by content!', 'success');
+      document.getElementById('undoButton').disabled = false;
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error organizing by content:', error);
+    }
+  });
+  
+  // Undo button
+  document.getElementById('undoButton').addEventListener('click', async () => {
+    try {
+      if (!tabStateManager.canUndo()) {
+        uiManager.showStatus('Nothing to undo', 'error');
+        return;
+      }
+      
+      uiManager.showStatus('Restoring previous tab state...', 'loading');
+      const success = await tabStateManager.restorePreviousState();
+      
+      if (success) {
+        uiManager.showStatus('Previous tab state restored!', 'success');
+        document.getElementById('undoButton').disabled = true;
+      } else {
+        uiManager.showStatus('Failed to restore previous state', 'error');
+      }
+    } catch (error) {
+      uiManager.showStatus(`Error: ${error.message}`, 'error');
+      console.error('Error undoing action:', error);
     }
   });
 });
