@@ -67,7 +67,7 @@ export class CategoryManager {
 
   /**
    * Save categories to storage
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>} - Whether the save was successful
    */
   async saveCategories() {
     return new Promise((resolve) => {
@@ -81,9 +81,15 @@ export class CategoryManager {
           
           // Also update the background script with the new categories
           try {
-            chrome.runtime.sendMessage({
-              action: 'updateCategories',
-              categories: this.categories
+            // Check if notifications are enabled
+            chrome.storage.sync.get('notificationsEnabled', (result) => {
+              const notificationsEnabled = result.notificationsEnabled !== false;
+              
+              chrome.runtime.sendMessage({
+                action: 'updateCategories',
+                categories: this.categories,
+                showNotification: notificationsEnabled
+              });
             });
           } catch (msgError) {
             console.warn('Could not update background script:', msgError);
@@ -220,11 +226,32 @@ export class CategoryManager {
       const saveButton = document.getElementById('saveCategoriesBtn');
       if (saveButton) {
         saveButton.addEventListener('click', async () => {
+          // Show loading status
+          const statusElement = document.getElementById('status');
+          if (statusElement) {
+            statusElement.className = 'status loading';
+            statusElement.textContent = 'Saving categories...';
+          }
+          
           const success = await this.saveCategories();
-          if (success) {
-            alert('Categories saved successfully!');
-          } else {
-            alert('Failed to save categories. Please try again.');
+          
+          // Update status
+          if (statusElement) {
+            if (success) {
+              statusElement.className = 'status success';
+              statusElement.textContent = 'Categories saved successfully!';
+              
+              // Clear status after 3 seconds
+              setTimeout(() => {
+                if (statusElement.textContent === 'Categories saved successfully!') {
+                  statusElement.textContent = '';
+                  statusElement.className = 'status';
+                }
+              }, 3000);
+            } else {
+              statusElement.className = 'status error';
+              statusElement.textContent = 'Failed to save categories. Please try again.';
+            }
           }
         });
       }
@@ -234,7 +261,28 @@ export class CategoryManager {
       if (resetButton) {
         resetButton.addEventListener('click', async () => {
           if (confirm('Are you sure you want to reset to default categories?')) {
+            // Show loading status
+            const statusElement = document.getElementById('status');
+            if (statusElement) {
+              statusElement.className = 'status loading';
+              statusElement.textContent = 'Resetting categories...';
+            }
+            
             await this.resetCategories();
+            
+            // Update status
+            if (statusElement) {
+              statusElement.className = 'status success';
+              statusElement.textContent = 'Categories reset to default!';
+              
+              // Clear status after 3 seconds
+              setTimeout(() => {
+                if (statusElement.textContent === 'Categories reset to default!') {
+                  statusElement.textContent = '';
+                  statusElement.className = 'status';
+                }
+              }, 3000);
+            }
           }
         });
       }

@@ -114,15 +114,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         if (Array.isArray(request.categories)) {
           PREDEFINED_CATEGORIES = request.categories;
-          showNotification('Tab Genius', 'Categories updated successfully');
+          
+          // Only show notification if explicitly requested
+          if (request.showNotification !== false) {
+            showNotification('Tab Genius', 'Categories updated successfully');
+          }
+          
           sendResponse({ success: true });
         } else {
-          showNotification('Tab Genius', 'Invalid categories format');
+          // Only show notification if explicitly requested
+          if (request.showNotification !== false) {
+            showNotification('Tab Genius', 'Invalid categories format');
+          }
+          
           sendResponse({ error: 'Invalid categories format' });
         }
       } catch (error) {
         console.error('Error updating categories:', error);
-        showNotification('Tab Genius', 'Failed to update categories');
+        
+        // Only show notification if explicitly requested
+        if (request.showNotification !== false) {
+          showNotification('Tab Genius', 'Failed to update categories');
+        }
+        
         sendResponse({ error: 'Failed to update categories' });
       }
       return true;
