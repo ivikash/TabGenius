@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tab Genius</title>
   <link rel="stylesheet" href="../css/popup.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
 </head>
 <body>
   <div class="container">
@@ -15,67 +15,68 @@
         <img src="../../icons/icon48.png" alt="Tab Genius Logo">
         <h1>Tab Genius</h1>
       </div>
+      <p class="tagline">Smart tab organization powered by AI</p>
     </header>
     
     <div class="section">
-      <h2><i class="material-icons">sort</i> Sort Tabs</h2>
+      <h2><i class="material-icons-round">sort</i> Quick Sort</h2>
       <div class="button-group">
         <button id="sortByTitle" class="primary-button">
-          <i class="material-icons">sort_by_alpha</i> By Title
+          <i class="material-icons-round">sort_by_alpha</i> Alphabetical
         </button>
         <button id="sortByUrl" class="primary-button">
-          <i class="material-icons">link</i> By URL
+          <i class="material-icons-round">language</i> By Domain
         </button>
       </div>
     </div>
     
     <div class="section">
-      <h2><i class="material-icons">category</i> Organize Tabs</h2>
+      <h2><i class="material-icons-round">psychology</i> AI Organization</h2>
       <div class="model-selection">
-        <label for="model-select">AI Model:</label>
+        <label for="model-select">Intelligence Engine:</label>
         <select id="model-select">
           <option value="gemini">Google Gemini</option>
-          <option value="ollama">Ollama</option>
+          <option value="ollama">Ollama (Local AI)</option>
         </select>
       </div>
       <div id="ollama-options" class="hidden">
         <label for="ollama-url">Ollama URL:</label>
         <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
-        <label for="ollama-model">Model:</label>
+        <label for="ollama-model">Model Name:</label>
         <input type="text" id="ollama-model" value="llama3.2" placeholder="llama3.2">
       </div>
       <div class="button-group">
         <button id="organizeByContent" class="primary-button">
-          <i class="material-icons">auto_awesome</i> Organize Content
+          <i class="material-icons-round">auto_awesome</i> Organize Tabs
         </button>
         <button id="ungroupAllTabs" class="secondary-button">
-          <i class="material-icons">clear_all</i> Ungroup All
+          <i class="material-icons-round">clear_all</i> Remove Groups
         </button>
       </div>
       <div class="category-manager-toggle">
         <button id="toggleCategoryManager" class="text-button">
-          <i class="material-icons">settings</i> Manage Categories
+          <i class="material-icons-round">edit</i> Edit Categories
         </button>
       </div>
     </div>
     
     <div id="categoryManagerSection" class="section hidden">
-      <h2><i class="material-icons">label</i> Category Manager</h2>
+      <h2><i class="material-icons-round">label</i> Category Manager</h2>
       <div class="category-tags" id="categoryTags">
         <!-- Category tags will be added here dynamically -->
       </div>
       <div class="add-category">
-        <input type="text" id="newCategoryInput" placeholder="Add new category">
+        <input type="text" id="newCategoryInput" placeholder="Enter new category name">
         <button id="addCategoryBtn" class="icon-button">
-          <i class="material-icons">add_circle</i>
+          <i class="material-icons-round">add</i>
         </button>
       </div>
       <div class="category-actions">
         <button id="saveCategoriesBtn" class="primary-button">
-          <i class="material-icons">save</i> Save Categories
+          <i class="material-icons-round">save</i> Save Changes
         </button>
         <button id="resetCategoriesBtn" class="secondary-button">
-          <i class="material-icons">refresh</i> Reset to Default
+          <i class="material-icons-round">restart_alt</i> Reset
         </button>
       </div>
     </div>
@@ -83,21 +84,21 @@
     <div id="status" class="status"></div>
     
     <div class="section settings">
-      <h2><i class="material-icons">settings</i> Settings</h2>
+      <h2><i class="material-icons-round">settings</i> Preferences</h2>
       <div class="setting-option">
         <input type="checkbox" id="enableNotifications" checked>
-        <label for="enableNotifications">Show notifications</label>
+        <label for="enableNotifications">Enable desktop notifications</label>
       </div>
     </div>
     
     <div class="section actions">
       <button id="undoButton" class="secondary-button" disabled>
-        <i class="material-icons">undo</i> Undo Last Action
+        <i class="material-icons-round">undo</i> Undo Last Action
       </button>
     </div>
     
     <footer>
-      <p class="note">Note: Pinned tabs will not be affected</p>
+      <p class="note">Pinned tabs will remain unchanged</p>
     </footer>
   </div>
   

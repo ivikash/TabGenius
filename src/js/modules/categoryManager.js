@@ -163,7 +163,7 @@ export class CategoryManager {
         tagElement.appendChild(tagText);
         
         const removeIcon = document.createElement('i');
-        removeIcon.className = 'material-icons';
+        removeIcon.className = 'material-icons-round';
         removeIcon.textContent = 'close';
         removeIcon.addEventListener('click', (e) => {
           e.stopPropagation();
