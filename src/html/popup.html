@@ -12,12 +12,14 @@
     
     <div class="section">
       <h2>Sort Tabs</h2>
+      <p class="note">Note: Pinned tabs will not be sorted</p>
       <button id="sortByTitle">Sort by Title</button>
       <button id="sortByUrl">Sort by URL</button>
     </div>
     
     <div class="section">
       <h2>Organize Tabs</h2>
+      <p class="note">Note: Pinned tabs will not be organized</p>
       <div class="model-selection">
         <label for="model-select">AI Model:</label>
         <select id="model-select">
@@ -29,7 +31,7 @@
         <label for="ollama-url">Ollama URL:</label>
         <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
         <label for="ollama-model">Model:</label>
-        <input type="text" id="ollama-model" value="llama2" placeholder="llama2">
+        <input type="text" id="ollama-model" value="llama3.2" placeholder="llama3.2">
       </div>
       <button id="organizeByContent">Organize by Content</button>
     </div>

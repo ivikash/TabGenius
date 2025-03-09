@@ -42,10 +42,11 @@ export class TabSorter {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else {
-          // Filter out chrome:// and chrome-extension:// URLs
+          // Filter out chrome:// and chrome-extension:// URLs and pinned tabs
           const filteredTabs = tabs.filter(tab => {
             return !tab.url.startsWith('chrome://') && 
-                   !tab.url.startsWith('chrome-extension://');
+                   !tab.url.startsWith('chrome-extension://') &&
+                   !tab.pinned;
           });
           resolve(filteredTabs);
         }

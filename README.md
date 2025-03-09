@@ -7,6 +7,7 @@ A Chrome extension that helps you sort and organize your browser tabs efficientl
 ### Tab Sorting
 - Sort tabs alphabetically by title
 - Sort tabs alphabetically by URL
+- Pinned tabs are preserved and not sorted
 
 ### Tab Organization
 - Organize tabs into groups based on content using AI
@@ -37,7 +38,7 @@ To use Ollama for tab organization:
 1. Make sure you have Ollama installed and running locally
 2. Select "Ollama" from the AI Model dropdown
 3. Configure the Ollama URL (default: http://localhost:11434)
-4. Specify the model name (default: llama2)
+4. Specify the model name (default: llama3.2)
 5. Click "Organize by Content"
 
 ## Project Structure
