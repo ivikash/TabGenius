@@ -1,0 +1,43 @@
+/**
+ * Implementation of Ollama AI model
+ */
+export class OllamaModel {
+  /**
+   * Create a new Ollama model instance
+   * @param {string} url - URL for Ollama API
+   * @param {string} model - Model name for Ollama
+   */
+  constructor(url, model) {
+    this.url = url;
+    this.model = model;
+  }
+
+  /**
+   * Get category for a tab using Ollama API
+   * @param {string} prompt - Prompt for the AI model
+   * @param {Object} tab - Tab object
+   * @returns {Promise<string>} - Category name
+   */
+  async getCategory(prompt, tab) {
+    try {
+      // Send request to background script to make the API call
+      // (Content scripts can't make cross-origin requests directly)
+      const result = await chrome.runtime.sendMessage({
+        action: 'analyzeWithOllama',
+        url: this.url,
+        model: this.model,
+        prompt: prompt,
+        tabId: tab.id
+      });
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      
+      return result.category || 'misc';
+    } catch (error) {
+      console.error('Error using Ollama model:', error);
+      throw new Error('Failed to analyze with Ollama');
+    }
+  }
+}
