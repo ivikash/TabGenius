@@ -115,24 +115,35 @@ export class CategoryManager {
   }
 
   /**
-   * Add a new category
-   * @param {string} category - Category name to add
-   * @returns {boolean} - Whether the category was added
+   * Add a new category or multiple comma-separated categories
+   * @param {string} categoryInput - Category name(s) to add
+   * @returns {boolean} - Whether at least one category was added
    */
-  addCategory(category) {
-    // Format the category (capitalize first letter of each word)
-    const formattedCategory = category.split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+  addCategory(categoryInput) {
+    // Split by comma to support multiple categories at once
+    const categoryNames = categoryInput.split(',').map(cat => cat.trim()).filter(cat => cat);
     
-    // Check if category already exists
-    if (this.categories.includes(formattedCategory)) {
+    if (categoryNames.length === 0) {
       return false;
     }
     
-    // Add the category
-    this.categories.push(formattedCategory);
-    return true;
+    let atLeastOneAdded = false;
+    
+    for (const category of categoryNames) {
+      // Format the category (capitalize first letter of each word)
+      const formattedCategory = category.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      
+      // Check if category already exists
+      if (!this.categories.includes(formattedCategory)) {
+        // Add the category
+        this.categories.push(formattedCategory);
+        atLeastOneAdded = true;
+      }
+    }
+    
+    return atLeastOneAdded;
   }
 
   /**
@@ -198,15 +209,16 @@ export class CategoryManager {
       if (addButton) {
         addButton.addEventListener('click', () => {
           const newCategoryInput = document.getElementById('newCategoryInput');
-          const category = newCategoryInput.value.trim();
+          const categoryInput = newCategoryInput.value.trim();
           
-          if (category) {
-            if (this.addCategory(category)) {
+          if (categoryInput) {
+            const added = this.addCategory(categoryInput);
+            if (added) {
               this.renderCategories();
               newCategoryInput.value = '';
             } else {
-              // Show error if category already exists
-              alert('This category already exists!');
+              // Show error if no categories were added (all already exist)
+              alert('All categories already exist!');
             }
           }
         });
