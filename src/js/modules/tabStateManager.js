@@ -17,6 +17,26 @@ export class TabStateManager {
       debugLogger.log('Saving current tab state');
       const tabs = await this.getAllTabs();
       
+      // Get all tab groups
+      const groups = await new Promise((resolve, reject) => {
+        chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT }, (groups) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(groups);
+          }
+        });
+      });
+      
+      // Create a map of group information
+      const groupInfo = {};
+      groups.forEach(group => {
+        groupInfo[group.id] = {
+          title: group.title,
+          color: group.color
+        };
+      });
+      
       // Create a snapshot of the current tab state
       const tabState = {
         timestamp: Date.now(),
@@ -26,12 +46,14 @@ export class TabStateManager {
           url: tab.url,
           title: tab.title,
           groupId: tab.groupId
-        }))
+        })),
+        groups: groupInfo
       };
       
       debugLogger.log('Tab state saved', { 
         timestamp: new Date(tabState.timestamp).toISOString(),
-        tabCount: tabState.tabs.length
+        tabCount: tabState.tabs.length,
+        groupCount: Object.keys(groupInfo).length
       });
       
       this.previousState = tabState;
@@ -90,10 +112,21 @@ export class TabStateManager {
         groupMap.get(tab.groupId).push(tab.id);
       }
       
-      // Restore each group
+      // Restore each group with its title and color
       for (const [groupId, tabIds] of groupMap.entries()) {
         try {
-          await this.createTabGroup(tabIds);
+          const newGroupId = await this.createTabGroup(tabIds);
+          
+          // Restore group title and color if available
+          if (previousState.groups && previousState.groups[groupId]) {
+            const groupInfo = previousState.groups[groupId];
+            if (groupInfo.title) {
+              await this.updateTabGroup(newGroupId, {
+                title: groupInfo.title,
+                color: groupInfo.color || 'grey'
+              });
+            }
+          }
         } catch (error) {
           console.warn(`Could not restore group for tabs ${tabIds}:`, error);
         }
@@ -165,6 +198,24 @@ export class TabStateManager {
   async moveTabToIndex(tabId, index) {
     return new Promise((resolve, reject) => {
       chrome.tabs.move(tabId, { index }, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  /**
+   * Update a tab group's properties
+   * @param {number} groupId - ID of the group to update
+   * @param {Object} properties - Properties to update (title, color)
+   * @returns {Promise<void>}
+   */
+  async updateTabGroup(groupId, properties) {
+    return new Promise((resolve, reject) => {
+      chrome.tabGroups.update(groupId, properties, () => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else {
