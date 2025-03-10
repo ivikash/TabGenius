@@ -314,6 +314,7 @@ footer {
 .add-category {
   display: flex;
   margin-bottom: 16px;
+  position: relative;
 }
 
 .add-category input {
@@ -321,6 +322,9 @@ footer {
   margin: 0;
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
+  min-width: 85%;
+  font-size: 14px;
+  padding: 10px 12px;
 }
 
 .icon-button {
@@ -333,6 +337,8 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 42px;
+  flex-shrink: 0;
 }
 
 .icon-button:hover {
