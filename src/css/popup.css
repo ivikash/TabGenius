@@ -241,17 +241,12 @@ label {
   display: none;
 }
 
-.status-section {
-  padding: 12px 20px;
-}
-
 .status {
   padding: 12px;
   border-radius: 6px;
   font-size: 13px;
   text-align: center;
   transition: all 0.3s ease;
-  min-height: 20px;
   margin: 0;
 }
 
