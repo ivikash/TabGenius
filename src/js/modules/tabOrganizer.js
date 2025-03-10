@@ -179,7 +179,7 @@ export class TabOrganizer {
       const timeoutId = setTimeout(() => {
         console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
         resolve({ category: 'Misc', error: 'Analysis timeout' });
-      }, 5000); // 5 second timeout
+      }, 15000); // 15 second timeout
       
       chrome.runtime.sendMessage(
         {
@@ -224,7 +224,7 @@ export class TabOrganizer {
       const timeoutId = setTimeout(() => {
         console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
         resolve({ category: 'Misc', error: 'Analysis timeout' });
-      }, 10000); // 10 second timeout for Ollama (may be slower than Gemini)
+      }, 15000); // 15 second timeout for Ollama
       
       chrome.runtime.sendMessage(
         {
