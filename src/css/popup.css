@@ -382,6 +382,14 @@ footer {
   width: 16px;
 }
 
+.setting-option input[type="number"] {
+  width: 60px;
+  margin-left: 8px;
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
 .setting-option label {
   display: inline;
   margin-top: 0;

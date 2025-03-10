@@ -175,19 +175,23 @@ export class TabOrganizer {
    */
   async analyzeWithGemini(prompt, tabId) {
     return new Promise((resolve, reject) => {
-      // Set a timeout to prevent getting stuck
-      const timeoutId = setTimeout(() => {
-        console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
-        resolve({ category: 'Misc', error: 'Analysis timeout' });
-      }, 15000); // 15 second timeout
-      
-      chrome.runtime.sendMessage(
-        {
-          action: 'analyzeWithGemini',
-          prompt: prompt,
-          tabId: tabId
-        },
-        (response) => {
+      // Get the timeout setting or use default
+      chrome.storage.sync.get('analysisTimeout', (result) => {
+        const timeoutSeconds = result.analysisTimeout || 15;
+        
+        // Set a timeout to prevent getting stuck
+        const timeoutId = setTimeout(() => {
+          console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
+          resolve({ category: 'Misc', error: 'Analysis timeout' });
+        }, timeoutSeconds * 1000); // Convert seconds to milliseconds
+        
+        chrome.runtime.sendMessage(
+          {
+            action: 'analyzeWithGemini',
+            prompt: prompt,
+            tabId: tabId
+          },
+          (response) => {
           // Clear the timeout since we got a response
           clearTimeout(timeoutId);
           
@@ -220,21 +224,25 @@ export class TabOrganizer {
    */
   async analyzeWithOllama(url, model, prompt, tabId) {
     return new Promise((resolve, reject) => {
-      // Set a timeout to prevent getting stuck
-      const timeoutId = setTimeout(() => {
-        console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
-        resolve({ category: 'Misc', error: 'Analysis timeout' });
-      }, 15000); // 15 second timeout for Ollama
-      
-      chrome.runtime.sendMessage(
-        {
-          action: 'analyzeWithOllama',
-          url: url,
-          model: model,
-          prompt: prompt,
-          tabId: tabId
-        },
-        (response) => {
+      // Get the timeout setting or use default
+      chrome.storage.sync.get('analysisTimeout', (result) => {
+        const timeoutSeconds = result.analysisTimeout || 15;
+        
+        // Set a timeout to prevent getting stuck
+        const timeoutId = setTimeout(() => {
+          console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
+          resolve({ category: 'Misc', error: 'Analysis timeout' });
+        }, timeoutSeconds * 1000); // Convert seconds to milliseconds
+        
+        chrome.runtime.sendMessage(
+          {
+            action: 'analyzeWithOllama',
+            url: url,
+            model: model,
+            prompt: prompt,
+            tabId: tabId
+          },
+          (response) => {
           // Clear the timeout since we got a response
           clearTimeout(timeoutId);
           

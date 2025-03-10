@@ -234,4 +234,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
   });
+  
+  // Initialize settings
+  chrome.storage.sync.get(['notificationsEnabled', 'analysisTimeout'], (result) => {
+    // Set notifications checkbox
+    const notificationsCheckbox = document.getElementById('enableNotifications');
+    if (notificationsCheckbox) {
+      notificationsCheckbox.checked = result.notificationsEnabled !== false;
+      notificationsCheckbox.addEventListener('change', (e) => {
+        chrome.storage.sync.set({ notificationsEnabled: e.target.checked });
+      });
+    }
+    
+    // Set analysis timeout input
+    const timeoutInput = document.getElementById('analysisTimeout');
+    if (timeoutInput) {
+      timeoutInput.value = result.analysisTimeout || 15;
+      timeoutInput.addEventListener('change', (e) => {
+        // Ensure value is between min and max
+        const value = Math.min(Math.max(parseInt(e.target.value) || 15, 5), 60);
+        e.target.value = value;
+        chrome.storage.sync.set({ analysisTimeout: value });
+      });
+    }
+  });
 });
