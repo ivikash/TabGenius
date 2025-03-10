@@ -330,19 +330,6 @@ export class TabOrganizer {
       return { category: 'Misc', error: error.message };
     }
   }
-            resolve({ category: 'Misc', error: 'No response' });
-          } else {
-            debugLogger.log(`Ollama analysis for tab ${tabId} complete:`, {
-              category: response.category,
-              tabId: tabId
-            });
-            resolve(response);
-          }
-        }
-      );
-    });
-  });
-}
 
   /**
    * Group tabs by category
