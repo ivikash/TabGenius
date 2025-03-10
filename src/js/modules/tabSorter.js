@@ -22,10 +22,20 @@ export class TabSorter {
       const tabs = await this.getAllTabs();
       debugLogger.log('Retrieved tabs for sorting', { count: tabs.length });
       
-      const sortedTabs = this.sortTabsByProperty(tabs, 'title');
-      debugLogger.log('Tabs sorted by title');
+      // Check if there are any grouped tabs
+      const hasGroupedTabs = tabs.some(tab => 
+        tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId !== -1
+      );
       
-      await this.reorderTabs(sortedTabs);
+      if (hasGroupedTabs) {
+        // Sort tabs within their groups
+        await this.sortTabsWithinGroups(tabs, 'title');
+      } else {
+        // Sort all tabs normally
+        const sortedTabs = this.sortTabsByProperty(tabs, 'title');
+        debugLogger.log('Tabs sorted by title');
+        await this.reorderTabs(sortedTabs);
+      }
     } catch (error) {
       console.error('Error sorting tabs by title:', error);
       throw new Error('Failed to sort tabs by title');
@@ -46,14 +56,130 @@ export class TabSorter {
       const tabs = await this.getAllTabs();
       debugLogger.log('Retrieved tabs for URL sorting', { count: tabs.length });
       
-      const sortedTabs = this.sortTabsByProperty(tabs, 'url');
-      debugLogger.log('Tabs sorted by URL');
+      // Check if there are any grouped tabs
+      const hasGroupedTabs = tabs.some(tab => 
+        tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId !== -1
+      );
       
-      await this.reorderTabs(sortedTabs);
+      if (hasGroupedTabs) {
+        // Sort tabs within their groups
+        await this.sortTabsWithinGroups(tabs, 'url');
+      } else {
+        // Sort all tabs normally
+        const sortedTabs = this.sortTabsByProperty(tabs, 'url');
+        debugLogger.log('Tabs sorted by URL');
+        await this.reorderTabs(sortedTabs);
+      }
     } catch (error) {
       debugLogger.error('Error sorting tabs by URL:', error);
       throw new Error('Failed to sort tabs by URL');
     }
+  }
+
+  /**
+   * Sort tabs within their respective groups
+   * @param {Array} tabs - Array of tab objects
+   * @param {string} property - Property to sort by (title or url)
+   * @returns {Promise<void>}
+   */
+  async sortTabsWithinGroups(tabs, property) {
+    try {
+      debugLogger.log(`Sorting tabs within groups by ${property}`);
+      
+      // First, get all tab groups
+      const groups = await new Promise((resolve, reject) => {
+        chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT }, (groups) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(groups);
+          }
+        });
+      });
+      
+      debugLogger.log('Found tab groups', { count: groups.length });
+      
+      // For each group, get its tabs and sort them
+      for (const group of groups) {
+        // Get all tabs in this group
+        const groupTabs = tabs.filter(tab => tab.groupId === group.id);
+        
+        if (groupTabs.length === 0) {
+          continue; // Skip empty groups
+        }
+        
+        // Sort the tabs within this group
+        const sortedGroupTabs = this.sortTabsByProperty(groupTabs, property);
+        
+        // Get the current index range of the group
+        const groupStartIndex = Math.min(...groupTabs.map(t => t.index));
+        
+        debugLogger.log(`Sorting group ${group.id} (${group.title || 'Untitled'})`, {
+          tabCount: sortedGroupTabs.length,
+          startIndex: groupStartIndex
+        });
+        
+        // Move each tab to its new position within the group's range
+        for (let i = 0; i < sortedGroupTabs.length; i++) {
+          const tab = sortedGroupTabs[i];
+          const newIndex = groupStartIndex + i;
+          if (tab.index !== newIndex) {
+            await this.moveTabToIndex(tab.id, newIndex);
+          }
+        }
+      }
+      
+      // Handle ungrouped tabs separately
+      const ungroupedTabs = tabs.filter(tab => 
+        tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE || tab.groupId === -1
+      );
+      
+      if (ungroupedTabs.length > 0) {
+        const sortedUngroupedTabs = this.sortTabsByProperty(ungroupedTabs, property);
+        debugLogger.log('Sorting ungrouped tabs', { tabCount: sortedUngroupedTabs.length });
+        
+        // Find the index after all groups
+        const lastGroupTab = tabs.filter(tab => 
+          tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId !== -1
+        ).sort((a, b) => b.index - a.index)[0];
+        
+        const startIndex = lastGroupTab ? lastGroupTab.index + 1 : 0;
+        
+        // Move ungrouped tabs to their new positions
+        for (let i = 0; i < sortedUngroupedTabs.length; i++) {
+          const tab = sortedUngroupedTabs[i];
+          const newIndex = startIndex + i;
+          if (tab.index !== newIndex) {
+            await this.moveTabToIndex(tab.id, newIndex);
+          }
+        }
+      }
+      
+      debugLogger.log('Tab sorting within groups completed');
+    } catch (error) {
+      debugLogger.error('Error sorting tabs within groups:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Move a tab to a specific index
+   * @param {number} tabId - ID of the tab to move
+   * @param {number} index - Index to move the tab to
+   * @returns {Promise<void>}
+   */
+  async moveTabToIndex(tabId, index) {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.move(tabId, { index }, () => {
+        if (chrome.runtime.lastError) {
+          debugLogger.error(`Error moving tab ${tabId} to index ${index}:`, chrome.runtime.lastError);
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          debugLogger.log(`Moved tab ${tabId} to index ${index}`);
+          resolve();
+        }
+      });
+    });
   }
 
   /**
