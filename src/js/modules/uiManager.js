@@ -118,6 +118,23 @@ export class UIManager {
    * @param {string} type - Type of status (loading, success, error)
    */
   showStatus(message, type = '') {
+    // Update status message in UI
+    const statusElement = document.getElementById('statusMessage');
+    if (statusElement) {
+      // Remove all existing status classes
+      statusElement.classList.remove('placeholder', 'success', 'error', 'loading');
+      
+      // Add the appropriate class based on type
+      if (type) {
+        statusElement.classList.add(type);
+      } else {
+        statusElement.classList.add('placeholder');
+      }
+      
+      // Update the message text
+      statusElement.textContent = message;
+    }
+    
     // Just show a notification for errors and success
     if ((type === 'error' || type === 'success') && this.notificationsEnabled) {
       this.showNotification(type === 'error' ? 'Error' : 'Success', message);
