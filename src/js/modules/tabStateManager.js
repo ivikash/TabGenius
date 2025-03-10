@@ -86,49 +86,66 @@ export class TabStateManager {
     try {
       const previousState = this.previousState;
       
-      // First, ungroup all tabs that were in groups
+      // First, get current tabs to check which ones still exist
+      const currentTabs = await this.getAllTabs();
+      const currentTabIds = new Set(currentTabs.map(tab => tab.id));
+      
+      // Filter out tabs that no longer exist
+      const validTabs = previousState.tabs.filter(tab => currentTabIds.has(tab.id));
+      
+      if (validTabs.length === 0) {
+        debugLogger.log('No valid tabs to restore');
+        return false;
+      }
+      
+      // First, ungroup all tabs that are currently in groups
       await this.ungroupAllTabs();
       
       // Then reorder tabs to match previous state
-      for (const tab of previousState.tabs) {
+      for (const tab of validTabs) {
         try {
           await this.moveTabToIndex(tab.id, tab.index);
         } catch (error) {
-          console.warn(`Could not move tab ${tab.id} to index ${tab.index}:`, error);
+          debugLogger.warn(`Could not move tab ${tab.id} to index ${tab.index}:`, error);
         }
       }
       
       // Finally, restore tab groups if they existed
-      const tabsWithGroups = previousState.tabs.filter(tab => 
+      const tabsWithGroups = validTabs.filter(tab => 
         tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE && tab.groupId !== -1
       );
       
-      // Group tabs by their previous groupId
-      const groupMap = new Map();
-      for (const tab of tabsWithGroups) {
-        if (!groupMap.has(tab.groupId)) {
-          groupMap.set(tab.groupId, []);
-        }
-        groupMap.get(tab.groupId).push(tab.id);
-      }
-      
-      // Restore each group with its title and color
-      for (const [groupId, tabIds] of groupMap.entries()) {
-        try {
-          const newGroupId = await this.createTabGroup(tabIds);
-          
-          // Restore group title and color if available
-          if (previousState.groups && previousState.groups[groupId]) {
-            const groupInfo = previousState.groups[groupId];
-            if (groupInfo.title) {
-              await this.updateTabGroup(newGroupId, {
-                title: groupInfo.title,
-                color: groupInfo.color || 'grey'
-              });
-            }
+      if (tabsWithGroups.length > 0) {
+        // Group tabs by their previous groupId
+        const groupMap = new Map();
+        for (const tab of tabsWithGroups) {
+          if (!groupMap.has(tab.groupId)) {
+            groupMap.set(tab.groupId, []);
           }
-        } catch (error) {
-          console.warn(`Could not restore group for tabs ${tabIds}:`, error);
+          groupMap.get(tab.groupId).push(tab.id);
+        }
+        
+        // Restore each group with its title and color
+        for (const [groupId, tabIds] of groupMap.entries()) {
+          try {
+            // Only create groups that have at least one tab
+            if (tabIds.length > 0) {
+              const newGroupId = await this.createTabGroup(tabIds);
+              
+              // Restore group title and color if available
+              if (previousState.groups && previousState.groups[groupId]) {
+                const groupInfo = previousState.groups[groupId];
+                if (groupInfo.title) {
+                  await this.updateTabGroup(newGroupId, {
+                    title: groupInfo.title,
+                    color: groupInfo.color || 'grey'
+                  });
+                }
+              }
+            }
+          } catch (error) {
+            debugLogger.warn(`Could not restore group for tabs ${tabIds}:`, error);
+          }
         }
       }
       
@@ -137,7 +154,7 @@ export class TabStateManager {
       
       return true;
     } catch (error) {
-      console.error('Error restoring tab state:', error);
+      debugLogger.error('Error restoring tab state:', error);
       return false;
     }
   }
