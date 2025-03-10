@@ -1,6 +1,8 @@
 /**
  * Manages the categories for tab organization
  */
+import debugLogger from './debugLogger.js';
+
 export class CategoryManager {
   constructor() {
     this.categories = [];
@@ -23,8 +25,12 @@ export class CategoryManager {
       await this.loadCategories();
       this.renderCategories();
       this.setupEventListeners();
+      debugLogger.log('CategoryManager initialized', { 
+        categoriesCount: this.categories.length,
+        usingDefaults: JSON.stringify(this.categories) === JSON.stringify(this.defaultCategories)
+      });
     } catch (error) {
-      console.error('Error initializing CategoryManager:', error);
+      debugLogger.error('Error initializing CategoryManager:', error);
       // Use default categories if initialization fails
       this.categories = [...this.defaultCategories];
       this.renderCategories();
@@ -41,7 +47,7 @@ export class CategoryManager {
       try {
         chrome.storage.sync.get('tabSorterCategories', (result) => {
           if (chrome.runtime.lastError) {
-            console.error('Error loading categories:', chrome.runtime.lastError);
+            debugLogger.error('Error loading categories:', chrome.runtime.lastError);
             // Use default categories if there's an error
             this.categories = [...this.defaultCategories];
             resolve();
@@ -50,14 +56,21 @@ export class CategoryManager {
           
           if (result && result.tabSorterCategories && Array.isArray(result.tabSorterCategories)) {
             this.categories = result.tabSorterCategories;
+            debugLogger.log('Loaded custom categories', { 
+              count: this.categories.length,
+              categories: this.categories
+            });
           } else {
             // Use default categories if none are saved
             this.categories = [...this.defaultCategories];
+            debugLogger.log('Using default categories', { 
+              count: this.categories.length
+            });
           }
           resolve();
         });
       } catch (error) {
-        console.error('Error accessing storage:', error);
+        debugLogger.error('Error accessing storage:', error);
         // Use default categories if there's an exception
         this.categories = [...this.defaultCategories];
         resolve();
@@ -72,12 +85,15 @@ export class CategoryManager {
   async saveCategories() {
     return new Promise((resolve) => {
       try {
+        debugLogger.log('Saving categories', { count: this.categories.length });
         chrome.storage.sync.set({ 'tabSorterCategories': this.categories }, () => {
           if (chrome.runtime.lastError) {
-            console.error('Error saving categories:', chrome.runtime.lastError);
+            debugLogger.error('Error saving categories:', chrome.runtime.lastError);
             resolve(false);
             return;
           }
+          
+          debugLogger.log('Categories saved successfully');
           
           // Also update the background script with the new categories
           try {
@@ -92,13 +108,13 @@ export class CategoryManager {
               });
             });
           } catch (msgError) {
-            console.warn('Could not update background script:', msgError);
+            debugLogger.warn('Could not update background script:', msgError);
           }
           
           resolve(true);
         });
       } catch (error) {
-        console.error('Error accessing storage:', error);
+        debugLogger.error('Error accessing storage:', error);
         resolve(false);
       }
     });

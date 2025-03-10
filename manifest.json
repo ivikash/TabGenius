@@ -23,7 +23,8 @@
     }
   },
   "background": {
-    "service_worker": "src/js/background.js"
+    "service_worker": "src/js/background.js",
+    "type": "module"
   },
   "icons": {
     "16": "icons/icon16.png",

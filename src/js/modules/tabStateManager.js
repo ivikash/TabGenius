@@ -1,6 +1,8 @@
 /**
  * Manages tab state for undo functionality
  */
+import debugLogger from './debugLogger.js';
+
 export class TabStateManager {
   constructor() {
     this.previousState = null;
@@ -12,6 +14,7 @@ export class TabStateManager {
    */
   async saveCurrentState() {
     try {
+      debugLogger.log('Saving current tab state');
       const tabs = await this.getAllTabs();
       
       // Create a snapshot of the current tab state
@@ -25,6 +28,11 @@ export class TabStateManager {
           groupId: tab.groupId
         }))
       };
+      
+      debugLogger.log('Tab state saved', { 
+        timestamp: new Date(tabState.timestamp).toISOString(),
+        tabCount: tabState.tabs.length
+      });
       
       this.previousState = tabState;
       console.log('Tab state saved:', tabState);

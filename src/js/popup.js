@@ -3,21 +3,45 @@ import { TabOrganizer } from './modules/tabOrganizer.js';
 import { UIManager } from './modules/uiManager.js';
 import { TabStateManager } from './modules/tabStateManager.js';
 import { CategoryManager } from './modules/categoryManager.js';
+import debugLogger from './modules/debugLogger.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+  debugLogger.log('Popup initialized');
   const tabStateManager = new TabStateManager();
   const tabSorter = new TabSorter(tabStateManager);
   const tabOrganizer = new TabOrganizer(tabStateManager);
   const uiManager = new UIManager();
   const categoryManager = new CategoryManager();
 
+  // Load and log all settings
+  try {
+    const settings = await chrome.storage.sync.get([
+      'tabGeniusDebugMode', 
+      'notificationsEnabled', 
+      'analysisTimeout',
+      'tabSorterCategories'
+    ]);
+    
+    debugLogger.log('Extension settings loaded:', {
+      debugMode: settings.tabGeniusDebugMode === true,
+      notificationsEnabled: settings.notificationsEnabled !== false,
+      analysisTimeout: settings.analysisTimeout || 15,
+      categoriesCount: settings.tabSorterCategories ? settings.tabSorterCategories.length : 'default'
+    });
+  } catch (error) {
+    debugLogger.error('Error loading settings:', error);
+  }
+
   // Initialize UI components
   uiManager.init();
+  debugLogger.log('UI initialized');
   
   // Initialize category manager
   try {
     await categoryManager.init();
+    debugLogger.log('Category manager initialized');
   } catch (error) {
+    debugLogger.error('Error initializing category manager:', error);
     console.error('Error initializing category manager:', error);
   }
 
@@ -33,8 +57,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       
       uiManager.showStatus('Sorting tabs by title...', 'loading');
-      await tabSorter.sortByTitle();
+      debugLogger.log('Starting sort by title');
+      
+      await debugLogger.time('Sort by title', async () => {
+        await tabSorter.sortByTitle();
+      });
+      
       uiManager.showStatus('Tabs sorted by title!', 'success');
+      debugLogger.log('Tabs sorted by title successfully');
       
       // Enable undo button and re-enable action buttons
       uiManager.setButtonsState({
@@ -46,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
-      console.error('Error sorting by title:', error);
+      debugLogger.error('Error sorting by title:', error);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -70,8 +100,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       
       uiManager.showStatus('Sorting tabs by URL...', 'loading');
-      await tabSorter.sortByUrl();
+      debugLogger.log('Starting sort by URL');
+      
+      await debugLogger.time('Sort by URL', async () => {
+        await tabSorter.sortByUrl();
+      });
+      
       uiManager.showStatus('Tabs sorted by URL!', 'success');
+      debugLogger.log('Tabs sorted by URL successfully');
       
       // Enable undo button and re-enable action buttons
       uiManager.setButtonsState({
@@ -83,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
-      console.error('Error sorting by URL:', error);
+      debugLogger.error('Error sorting by URL:', error);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -120,9 +156,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         modelConfig.model = document.getElementById('ollama-model').value;
       }
       
+      // Get analysis timeout setting
+      const settings = await chrome.storage.sync.get(['analysisTimeout', 'tabSorterCategories']);
+      const timeout = settings.analysisTimeout || 15;
+      const categories = settings.tabSorterCategories || categoryManager.defaultCategories;
+      
+      debugLogger.log('Starting tab organization with:', {
+        modelType: modelType,
+        analysisTimeout: timeout,
+        categoriesCount: categories.length,
+        categories: categories,
+        modelConfig: modelConfig
+      });
+      
       uiManager.showStatus('Organizing tabs by content...', 'loading');
-      await tabOrganizer.organizeByContent(modelConfig);
+      
+      await debugLogger.time('Tab organization', async () => {
+        await tabOrganizer.organizeByContent(modelConfig);
+      });
+      
       uiManager.showStatus('Tabs organized by content!', 'success');
+      debugLogger.log('Tab organization completed successfully');
       
       // Enable undo button and re-enable action buttons
       uiManager.setButtonsState({
@@ -134,7 +188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
-      console.error('Error organizing by content:', error);
+      debugLogger.error('Error organizing by content:', error);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -236,7 +290,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   
   // Initialize settings
-  chrome.storage.sync.get(['notificationsEnabled', 'analysisTimeout'], (result) => {
+  chrome.storage.sync.get(['notificationsEnabled', 'analysisTimeout', 'tabGeniusDebugMode'], (result) => {
     // Set notifications checkbox
     const notificationsCheckbox = document.getElementById('enableNotifications');
     if (notificationsCheckbox) {
@@ -255,6 +309,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const value = Math.min(Math.max(parseInt(e.target.value) || 15, 5), 60);
         e.target.value = value;
         chrome.storage.sync.set({ analysisTimeout: value });
+      });
+    }
+    
+    // Set debug mode checkbox
+    const debugModeCheckbox = document.getElementById('enableDebugMode');
+    if (debugModeCheckbox) {
+      debugModeCheckbox.checked = result.tabGeniusDebugMode === true;
+      debugModeCheckbox.addEventListener('change', (e) => {
+        debugLogger.setDebugMode(e.target.checked);
+        debugLogger.log('Debug mode changed:', e.target.checked);
       });
     }
   });

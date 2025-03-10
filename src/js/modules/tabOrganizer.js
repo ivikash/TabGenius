@@ -2,6 +2,8 @@
  * Tab Organizer for Tab Genius extension
  * Handles organizing tabs into groups based on content
  */
+import debugLogger from './debugLogger.js';
+
 export class TabOrganizer {
   constructor(tabStateManager) {
     this.tabStateManager = tabStateManager;
@@ -14,14 +16,18 @@ export class TabOrganizer {
    */
   async organizeByContent(modelConfig) {
     try {
+      debugLogger.log('Starting tab organization', modelConfig);
+      
       // Save current state before organizing
       await this.tabStateManager.saveCurrentState();
       
       // Get all tabs in current window
       const tabs = await chrome.tabs.query({ currentWindow: true });
+      debugLogger.log('Found tabs', { count: tabs.length });
       
       // Skip pinned tabs
       const unpinnedTabs = tabs.filter(tab => !tab.pinned);
+      debugLogger.log('Unpinned tabs', { count: unpinnedTabs.length });
       
       if (unpinnedTabs.length === 0) {
         throw new Error('No unpinned tabs to organize');
@@ -63,6 +69,18 @@ export class TabOrganizer {
   async analyzeTabs(tabs, modelConfig) {
     const tabCategories = {};
     const prompt = "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name.";
+    
+    // Get timeout setting
+    const settings = await chrome.storage.sync.get(['analysisTimeout', 'tabSorterCategories']);
+    const timeoutSeconds = settings.analysisTimeout || 15;
+    const availableCategories = settings.tabSorterCategories || [];
+    
+    debugLogger.log('Starting tab analysis', {
+      tabCount: tabs.length,
+      timeoutSeconds: timeoutSeconds,
+      modelType: modelConfig.type,
+      availableCategories: availableCategories.length > 0 ? availableCategories : 'using defaults'
+    });
     
     // Process tabs in batches to avoid overwhelming the browser
     const batchSize = 5;
@@ -179,9 +197,16 @@ export class TabOrganizer {
       chrome.storage.sync.get('analysisTimeout', (result) => {
         const timeoutSeconds = result.analysisTimeout || 15;
         
+        debugLogger.log(`Analyzing tab ${tabId} with Gemini`, {
+          timeoutSeconds: timeoutSeconds,
+          prompt: prompt
+        });
+        
         // Set a timeout to prevent getting stuck
         const timeoutId = setTimeout(() => {
-          console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
+          debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
+            timeoutSeconds: timeoutSeconds
+          });
           resolve({ category: 'Misc', error: 'Analysis timeout' });
         }, timeoutSeconds * 1000); // Convert seconds to milliseconds
         
@@ -196,22 +221,26 @@ export class TabOrganizer {
           clearTimeout(timeoutId);
           
           if (chrome.runtime.lastError) {
-            console.warn(`Error in Gemini analysis for tab ${tabId}:`, chrome.runtime.lastError);
+            debugLogger.warn(`Error in Gemini analysis for tab ${tabId}:`, chrome.runtime.lastError);
             resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
           } else if (response && response.error) {
-            console.warn(`Error response from Gemini for tab ${tabId}:`, response.error);
+            debugLogger.warn(`Error response from Gemini for tab ${tabId}:`, response.error);
             resolve({ category: 'Misc', error: response.error });
           } else if (!response) {
-            console.warn(`No response from Gemini for tab ${tabId}`);
+            debugLogger.warn(`No response from Gemini for tab ${tabId}`);
             resolve({ category: 'Misc', error: 'No response' });
           } else {
+            debugLogger.log(`Gemini analysis for tab ${tabId} complete:`, {
+              category: response.category,
+              tabId: tabId
+            });
             resolve(response);
           }
         }
       );
     });
-  }
-
+  });
+}
   
 
   /**
@@ -228,9 +257,18 @@ export class TabOrganizer {
       chrome.storage.sync.get('analysisTimeout', (result) => {
         const timeoutSeconds = result.analysisTimeout || 15;
         
+        debugLogger.log(`Analyzing tab ${tabId} with Ollama`, {
+          timeoutSeconds: timeoutSeconds,
+          url: url,
+          model: model,
+          prompt: prompt
+        });
+        
         // Set a timeout to prevent getting stuck
         const timeoutId = setTimeout(() => {
-          console.warn(`Analysis timeout for tab ${tabId}, falling back to default category`);
+          debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
+            timeoutSeconds: timeoutSeconds
+          });
           resolve({ category: 'Misc', error: 'Analysis timeout' });
         }, timeoutSeconds * 1000); // Convert seconds to milliseconds
         
@@ -247,21 +285,26 @@ export class TabOrganizer {
           clearTimeout(timeoutId);
           
           if (chrome.runtime.lastError) {
-            console.warn(`Error in Ollama analysis for tab ${tabId}:`, chrome.runtime.lastError);
+            debugLogger.warn(`Error in Ollama analysis for tab ${tabId}:`, chrome.runtime.lastError);
             resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
           } else if (response && response.error) {
-            console.warn(`Error response from Ollama for tab ${tabId}:`, response.error);
+            debugLogger.warn(`Error response from Ollama for tab ${tabId}:`, response.error);
             resolve({ category: 'Misc', error: response.error });
           } else if (!response) {
-            console.warn(`No response from Ollama for tab ${tabId}`);
+            debugLogger.warn(`No response from Ollama for tab ${tabId}`);
             resolve({ category: 'Misc', error: 'No response' });
           } else {
+            debugLogger.log(`Ollama analysis for tab ${tabId} complete:`, {
+              category: response.category,
+              tabId: tabId
+            });
             resolve(response);
           }
         }
       );
     });
-  }
+  });
+}
 
   /**
    * Group tabs by category
@@ -272,6 +315,11 @@ export class TabOrganizer {
     // Get unique categories
     const categories = [...new Set(Object.values(tabCategories))];
     
+    debugLogger.log('Grouping tabs by categories', {
+      uniqueCategories: categories,
+      tabCount: Object.keys(tabCategories).length
+    });
+    
     // Create tab groups for each category
     for (const category of categories) {
       // Get tab IDs for this category
@@ -281,6 +329,11 @@ export class TabOrganizer {
       
       if (tabIds.length > 0) {
         try {
+          debugLogger.log(`Creating group for category "${category}"`, {
+            tabCount: tabIds.length,
+            tabIds: tabIds
+          });
+          
           // Create a group for these tabs
           const groupId = await chrome.tabs.group({ tabIds });
           
@@ -289,8 +342,13 @@ export class TabOrganizer {
             title: category,
             color: this.getCategoryColor(category)
           });
+          
+          debugLogger.log(`Group created for "${category}"`, {
+            groupId: groupId,
+            color: this.getCategoryColor(category)
+          });
         } catch (error) {
-          console.error(`Error creating group for category ${category}:`, error);
+          debugLogger.error(`Error creating group for category ${category}:`, error);
         }
       }
     }

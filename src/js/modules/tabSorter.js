@@ -1,6 +1,8 @@
 /**
  * Handles tab sorting functionality
  */
+import debugLogger from './debugLogger.js';
+
 export class TabSorter {
   constructor(tabStateManager) {
     this.tabStateManager = tabStateManager;
@@ -12,11 +14,17 @@ export class TabSorter {
    */
   async sortByTitle() {
     try {
+      debugLogger.log('Starting sort by title');
+      
       // Save current state before sorting
       await this.tabStateManager.saveCurrentState();
       
       const tabs = await this.getAllTabs();
+      debugLogger.log('Retrieved tabs for sorting', { count: tabs.length });
+      
       const sortedTabs = this.sortTabsByProperty(tabs, 'title');
+      debugLogger.log('Tabs sorted by title');
+      
       await this.reorderTabs(sortedTabs);
     } catch (error) {
       console.error('Error sorting tabs by title:', error);
@@ -30,14 +38,20 @@ export class TabSorter {
    */
   async sortByUrl() {
     try {
+      debugLogger.log('Starting sort by URL');
+      
       // Save current state before sorting
       await this.tabStateManager.saveCurrentState();
       
       const tabs = await this.getAllTabs();
+      debugLogger.log('Retrieved tabs for URL sorting', { count: tabs.length });
+      
       const sortedTabs = this.sortTabsByProperty(tabs, 'url');
+      debugLogger.log('Tabs sorted by URL');
+      
       await this.reorderTabs(sortedTabs);
     } catch (error) {
-      console.error('Error sorting tabs by URL:', error);
+      debugLogger.error('Error sorting tabs by URL:', error);
       throw new Error('Failed to sort tabs by URL');
     }
   }
@@ -50,6 +64,7 @@ export class TabSorter {
     return new Promise((resolve, reject) => {
       chrome.tabs.query({ currentWindow: true }, (tabs) => {
         if (chrome.runtime.lastError) {
+          debugLogger.error('Error querying tabs:', chrome.runtime.lastError);
           reject(new Error(chrome.runtime.lastError.message));
         } else {
           // Filter out chrome:// and chrome-extension:// URLs and pinned tabs
@@ -57,6 +72,11 @@ export class TabSorter {
             return !tab.url.startsWith('chrome://') && 
                    !tab.url.startsWith('chrome-extension://') &&
                    !tab.pinned;
+          });
+          debugLogger.log('Filtered tabs', { 
+            total: tabs.length, 
+            filtered: filteredTabs.length,
+            pinned: tabs.length - filteredTabs.length 
           });
           resolve(filteredTabs);
         }
@@ -84,18 +104,28 @@ export class TabSorter {
    * @returns {Promise<void>}
    */
   async reorderTabs(sortedTabs) {
+    debugLogger.log('Starting tab reordering', { tabCount: sortedTabs.length });
+    
     const movePromises = sortedTabs.map((tab, index) => {
       return new Promise((resolve, reject) => {
         chrome.tabs.move(tab.id, { index }, () => {
           if (chrome.runtime.lastError) {
+            debugLogger.error(`Error moving tab ${tab.id} to index ${index}:`, chrome.runtime.lastError);
             reject(new Error(chrome.runtime.lastError.message));
           } else {
+            debugLogger.log(`Moved tab ${tab.id} to index ${index}`);
             resolve();
           }
         });
       });
     });
 
-    await Promise.all(movePromises);
+    try {
+      await Promise.all(movePromises);
+      debugLogger.log('Tab reordering completed successfully');
+    } catch (error) {
+      debugLogger.error('Error during tab reordering:', error);
+      throw error;
+    }
   }
 }

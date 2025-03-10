@@ -2,6 +2,7 @@
  * Background script for Tab Sorter extension
  * Handles API calls and tab content extraction
  */
+import debugLogger from './modules/debugLogger.js';
 
 // Predefined categories for consistent grouping
 let PREDEFINED_CATEGORIES = [
@@ -13,21 +14,84 @@ let PREDEFINED_CATEGORIES = [
   'Marketing', 'Design', 'Documentation', 'Communication', 'Misc'
 ];
 
+// Log startup information
+debugLogger.log('Background script initialized', {
+  timestamp: new Date().toISOString(),
+  version: chrome.runtime.getManifest().version
+});
+
+// Load all settings on startup
+chrome.storage.sync.get(null, (allSettings) => {
+  if (chrome.runtime.lastError) {
+    debugLogger.error('Error loading settings:', chrome.runtime.lastError);
+    return;
+  }
+  
+  debugLogger.log('All extension settings:', {
+    debugMode: allSettings.tabGeniusDebugMode === true,
+    notificationsEnabled: allSettings.notificationsEnabled !== false,
+    analysisTimeout: allSettings.analysisTimeout || 15,
+    hasCustomCategories: !!allSettings.tabSorterCategories,
+    categoriesCount: allSettings.tabSorterCategories ? allSettings.tabSorterCategories.length : PREDEFINED_CATEGORIES.length
+  });
+});
+
 // Load user-defined categories from storage on startup
 chrome.runtime.onInstalled.addListener(() => {
   try {
+    debugLogger.log('Extension installed/updated', {
+      version: chrome.runtime.getManifest().version,
+      installTime: new Date().toISOString()
+    });
+    
     chrome.storage.sync.get('tabSorterCategories', (result) => {
       if (chrome.runtime.lastError) {
-        console.error('Error loading categories:', chrome.runtime.lastError);
+        debugLogger.error('Error loading categories:', chrome.runtime.lastError);
         return;
       }
       
       if (result && result.tabSorterCategories && Array.isArray(result.tabSorterCategories)) {
         PREDEFINED_CATEGORIES = result.tabSorterCategories;
+        debugLogger.log('Loaded custom categories', { 
+          count: PREDEFINED_CATEGORIES.length,
+          categories: PREDEFINED_CATEGORIES
+        });
+      } else {
+        debugLogger.log('Using default categories', { 
+          count: PREDEFINED_CATEGORIES.length,
+          categories: PREDEFINED_CATEGORIES
+        });
+      }
+    });
+    
+    // Initialize default settings if not already set
+    chrome.storage.sync.get(['notificationsEnabled', 'analysisTimeout', 'tabGeniusDebugMode'], (settings) => {
+      const updates = {};
+      let hasUpdates = false;
+      
+      if (settings.notificationsEnabled === undefined) {
+        updates.notificationsEnabled = true;
+        hasUpdates = true;
+      }
+      
+      if (settings.analysisTimeout === undefined) {
+        updates.analysisTimeout = 15;
+        hasUpdates = true;
+      }
+      
+      if (settings.tabGeniusDebugMode === undefined) {
+        updates.tabGeniusDebugMode = false;
+        hasUpdates = true;
+      }
+      
+      if (hasUpdates) {
+        chrome.storage.sync.set(updates, () => {
+          debugLogger.log('Initialized default settings', updates);
+        });
       }
     });
   } catch (error) {
-    console.error('Error accessing storage:', error);
+    debugLogger.error('Error during extension initialization:', error);
   }
 });
 
@@ -155,39 +219,42 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 /**
  * Analyze tab content with Google's Gemini API
- * @param {string} prompt - Prompt for the AI model
- * @param {number} tabId - ID of the tab to analyze
- * @returns {Promise<Object>} - Analysis result
+ * @param {string} content - Tab content to analyze
+ * @param {Array<string>} availableCategories - Available categories to choose from
+ * @returns {Promise<string>} - Category name
  */
-async function analyzeWithGemini(prompt, tabId) {
+async function analyzeWithGemini(content, availableCategories) {
   try {
-    // Get tab content
-    const content = await getTabContent(tabId);
+    debugLogger.log('Analyzing content with Gemini', {
+      contentLength: content.length,
+      categoriesCount: availableCategories.length
+    });
     
     // Trim content to 750 characters for efficiency
     const trimmedContent = content.substring(0, 750);
     
     // Check if content is too short or indicates an error
     if (trimmedContent.length < 10 || trimmedContent.includes('Unable to access tab content')) {
-      console.warn("Insufficient content for analysis, using tab title");
-      
-      // Get tab title as fallback
-      const tab = await chrome.tabs.get(tabId);
-      const titleContent = `Title: ${tab.title || 'Unknown'}\nURL: ${tab.url || 'Unknown'}`;
+      debugLogger.warn("Insufficient content for analysis, using tab title");
       
       // Use simulated categorization with title
-      return { category: simulateAICategory(titleContent) };
+      return simulateAICategory(trimmedContent);
     }
     
     // Prepare prompt with content and predefined categories
-    const fullPrompt = `${prompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${PREDEFINED_CATEGORIES.join(', ')}. Respond with only 1-2 words in English.`;
+    const fullPrompt = `Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name.\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${availableCategories.join(', ')}. Respond with only 1-2 words in English.`;
+    
+    debugLogger.log('Gemini prompt prepared', {
+      promptLength: fullPrompt.length,
+      availableCategories: availableCategories
+    });
     
     // Check if Google's Gemini API is available
     if (typeof ai !== 'undefined' && ai.languageModel) {
       try {
         // Check capabilities
         const capabilities = await ai.languageModel.capabilities();
-        console.log("Gemini capabilities:", capabilities);
+        debugLogger.log("Gemini capabilities:", capabilities);
         
         if (capabilities.available !== 'no') {
           try {
@@ -204,6 +271,8 @@ async function analyzeWithGemini(prompt, tabId) {
               )
             ]);
             
+            debugLogger.log("Gemini session created successfully");
+            
             // Get response from Gemini with timeout
             const responsePromise = session.prompt(fullPrompt);
             const response = await Promise.race([
@@ -213,38 +282,40 @@ async function analyzeWithGemini(prompt, tabId) {
               )
             ]);
             
-            console.log("Gemini response:", response);
+            debugLogger.log("Gemini response received:", {
+              rawResponse: response
+            });
             
             // Clean up and format the response
-            const category = formatCategory(response);
+            const category = formatCategory(response, availableCategories);
             
             // Destroy the session to free resources
             try {
               session.destroy();
             } catch (destroyError) {
-              console.warn("Error destroying Gemini session:", destroyError);
+              debugLogger.warn("Error destroying Gemini session:", destroyError);
             }
             
-            return { category };
+            return category;
           } catch (promptError) {
-            console.warn("Error with Gemini prompt, falling back to simulation:", promptError);
-            return { category: simulateAICategory(trimmedContent) };
+            debugLogger.warn("Error with Gemini prompt, falling back to simulation:", promptError);
+            return simulateAICategory(trimmedContent);
           }
         } else {
-          console.warn("Gemini model not available, falling back to simulation");
-          return { category: simulateAICategory(trimmedContent) };
+          debugLogger.warn("Gemini model not available, falling back to simulation");
+          return simulateAICategory(trimmedContent);
         }
       } catch (apiError) {
-        console.error("Error using Chrome's Prompt API:", apiError);
-        return { category: simulateAICategory(trimmedContent) };
+        debugLogger.error("Error using Chrome's Prompt API:", apiError);
+        return simulateAICategory(trimmedContent);
       }
     } else {
-      console.warn("Chrome's Prompt API not available, falling back to simulation");
-      return { category: simulateAICategory(trimmedContent) };
+      debugLogger.warn("Chrome's Prompt API not available, falling back to simulation");
+      return simulateAICategory(trimmedContent);
     }
   } catch (error) {
-    console.error('Error analyzing with Gemini:', error);
-    return { category: 'Misc' };
+    debugLogger.error('Error analyzing with Gemini:', error);
+    return 'Misc';
   }
 }
 
@@ -308,9 +379,10 @@ async function analyzeWithOllama(url, model, prompt, tabId) {
 /**
  * Format category name: capitalize, limit to 1-2 words, and match with predefined categories if possible
  * @param {string} categoryText - Raw category text from AI
+ * @param {Array<string>} availableCategories - Available categories to choose from
  * @returns {string} - Formatted category name
  */
-function formatCategory(categoryText) {
+function formatCategory(categoryText, availableCategories) {
   // Remove quotes, extra spaces, and limit to 1-2 words
   const cleanedText = categoryText.replace(/["']/g, '').trim();
   const words = cleanedText.split(/\s+/).slice(0, 2);
@@ -320,12 +392,26 @@ function formatCategory(categoryText) {
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ');
   
+  debugLogger.log('Formatting category', {
+    raw: categoryText,
+    cleaned: cleanedText,
+    formatted: formattedCategory
+  });
+  
   // Try to match with predefined categories
-  const matchedCategory = PREDEFINED_CATEGORIES.find(category => 
+  const matchedCategory = availableCategories.find(category => 
     category.toLowerCase() === formattedCategory.toLowerCase()
   );
   
-  return matchedCategory || formattedCategory;
+  if (matchedCategory) {
+    debugLogger.log('Matched with predefined category', {
+      formatted: formattedCategory,
+      matched: matchedCategory
+    });
+    return matchedCategory;
+  }
+  
+  return formattedCategory;
 }
 
 /**

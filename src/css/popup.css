@@ -132,6 +132,20 @@ button:disabled {
 
 .model-selection {
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.model-selection label {
+  margin: 0;
+  flex-shrink: 0;
+  min-width: 130px;
+}
+
+.model-selection select {
+  margin: 0;
+  flex-grow: 1;
 }
 
 select, input {
@@ -156,9 +170,25 @@ select:focus, input:focus {
 label {
   display: block;
   margin-top: 10px;
+  margin-bottom: 4px;
   font-size: 14px;
   color: #5f6368;
   font-weight: 500;
+}
+
+/* Ollama options styling */
+#ollama-options {
+  margin-bottom: 16px;
+}
+
+#ollama-options label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+#ollama-options input {
+  width: 100%;
 }
 
 .hidden {
@@ -349,7 +379,6 @@ footer {
   height: 100%;
   margin: 0;
 }
-}
 
 .icon-button:hover {
   background-color: #3367d6;
@@ -372,7 +401,7 @@ footer {
 .setting-option {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .setting-option input[type="checkbox"] {
@@ -385,9 +414,10 @@ footer {
 .setting-option input[type="number"] {
   width: 60px;
   margin-left: 8px;
-  padding: 4px;
-  border: 1px solid #ccc;
+  padding: 6px;
+  border: 1px solid #dadce0;
   border-radius: 4px;
+  background-color: #f8f9fa;
 }
 
 .setting-option label {
