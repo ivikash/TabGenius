@@ -73,7 +73,7 @@ export class TabOrganizer {
     const settings = await chrome.storage.sync.get(['analysisTimeout', 'tabSorterCategories', 'analysisPrompt']);
     const timeoutSeconds = settings.analysisTimeout || 15;
     const availableCategories = settings.tabSorterCategories || [];
-    const prompt = settings.analysisPrompt || "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name. Include one relevant emoji before the category name.";
+    const prompt = settings.analysisPrompt || "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name.";
     
     debugLogger.log('Starting tab analysis', {
       tabCount: tabs.length,
@@ -224,7 +224,7 @@ export class TabOrganizer {
               resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
             } else if (response && response.error) {
               debugLogger.warn(`Error response from Gemini for tab ${tabId}:`, response.error);
-              resolve({ category: 'Misc', error: response.error });
+              resolve({ category: response.category || 'Misc', error: response.error });
             } else if (!response) {
               debugLogger.warn(`No response from Gemini for tab ${tabId}`);
               resolve({ category: 'Misc', error: 'No response' });
@@ -245,7 +245,20 @@ export class TabOrganizer {
           debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
             timeoutSeconds: timeoutSeconds
           });
-          resolve({ category: 'Misc', error: 'Analysis timeout' });
+          
+          // Use simulate fallback for timeout
+          chrome.runtime.sendMessage(
+            {
+              action: 'simulateFallback',
+              tabId: tabId
+            },
+            (response) => {
+              resolve({ 
+                category: response?.category || 'Misc', 
+                error: 'Analysis timeout' 
+              });
+            }
+          );
         }, timeoutSeconds * 1000);
       });
       
@@ -253,7 +266,17 @@ export class TabOrganizer {
       return await Promise.race([analysisPromise, timeoutPromise]);
     } catch (error) {
       debugLogger.error(`Unexpected error in Gemini analysis for tab ${tabId}:`, error);
-      return { category: 'Misc', error: error.message };
+      
+      // Use simulate fallback for any error
+      try {
+        const fallbackResult = await chrome.runtime.sendMessage({
+          action: 'simulateFallback',
+          tabId: tabId
+        });
+        return { category: fallbackResult?.category || 'Misc', error: error.message };
+      } catch (fallbackError) {
+        return { category: 'Misc', error: error.message };
+      }
     }
   }
 
@@ -295,10 +318,10 @@ export class TabOrganizer {
           (response) => {
             if (chrome.runtime.lastError) {
               debugLogger.warn(`Error in Ollama analysis for tab ${tabId}:`, chrome.runtime.lastError);
-              resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
+              resolve({ category: response?.category || 'Misc', error: chrome.runtime.lastError.message });
             } else if (response && response.error) {
               debugLogger.warn(`Error response from Ollama for tab ${tabId}:`, response.error);
-              resolve({ category: 'Misc', error: response.error });
+              resolve({ category: response.category || 'Misc', error: response.error });
             } else if (!response) {
               debugLogger.warn(`No response from Ollama for tab ${tabId}`);
               resolve({ category: 'Misc', error: 'No response' });
@@ -319,7 +342,20 @@ export class TabOrganizer {
           debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
             timeoutSeconds: timeoutSeconds
           });
-          resolve({ category: 'Misc', error: 'Analysis timeout' });
+          
+          // Use simulate fallback for timeout
+          chrome.runtime.sendMessage(
+            {
+              action: 'simulateFallback',
+              tabId: tabId
+            },
+            (response) => {
+              resolve({ 
+                category: response?.category || 'Misc', 
+                error: 'Analysis timeout' 
+              });
+            }
+          );
         }, timeoutSeconds * 1000);
       });
       
@@ -327,7 +363,17 @@ export class TabOrganizer {
       return await Promise.race([analysisPromise, timeoutPromise]);
     } catch (error) {
       debugLogger.error(`Unexpected error in Ollama analysis for tab ${tabId}:`, error);
-      return { category: 'Misc', error: error.message };
+      
+      // Use simulate fallback for any error
+      try {
+        const fallbackResult = await chrome.runtime.sendMessage({
+          action: 'simulateFallback',
+          tabId: tabId
+        });
+        return { category: fallbackResult?.category || 'Misc', error: error.message };
+      } catch (fallbackError) {
+        return { category: 'Misc', error: error.message };
+      }
     }
   }
 

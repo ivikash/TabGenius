@@ -39,8 +39,19 @@ export class OllamaModel {
       return result.category || 'Misc';
     } catch (error) {
       console.error('Error using Ollama model:', error);
-      // Don't throw error, return a default category
-      return 'Uncategorized';
+      // Send a message to use the simulate fallback
+      try {
+        const fallbackResult = await chrome.runtime.sendMessage({
+          action: 'simulateFallback',
+          tabId: tab.id,
+          title: tab.title || '',
+          url: tab.url || ''
+        });
+        return fallbackResult.category || 'Uncategorized';
+      } catch (fallbackError) {
+        console.error('Error using fallback categorization:', fallbackError);
+        return 'Uncategorized';
+      }
     }
   }
 }

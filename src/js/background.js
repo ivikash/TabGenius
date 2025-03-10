@@ -174,11 +174,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         } catch (error) {
           debugLogger.error('Gemini analysis error:', error);
           showNotification('Tab Analysis Error', error.message || 'Failed to analyze tab');
-          sendResponse({ error: error.message });
+          // Use simulate fallback for any error
+          const fallbackCategory = simulateAICategory(content.substring(0, 750));
+          sendResponse({ error: error.message, category: fallbackCategory });
         }
       }).catch(error => {
         debugLogger.error('Error getting tab content:', error);
-        sendResponse({ error: 'Failed to get tab content' });
+        // Use simulate fallback for any error
+        const fallbackCategory = simulateAICategory(`Title: ${request.tabId}`);
+        sendResponse({ error: 'Failed to get tab content', category: fallbackCategory });
       });
       return true; // Indicates async response
 
@@ -187,10 +191,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .then(sendResponse)
         .catch(error => {
           showNotification('Tab Analysis Error', error.message || 'Failed to analyze tab');
-          sendResponse({ error: error.message });
+          // Use simulate fallback for any error
+          getTabContent(request.tabId).then(content => {
+            const fallbackCategory = simulateAICategory(content.substring(0, 750));
+            sendResponse({ error: error.message, category: fallbackCategory });
+          }).catch(contentError => {
+            const fallbackCategory = simulateAICategory(`Title: ${request.tabId}`);
+            sendResponse({ error: error.message, category: fallbackCategory });
+          });
         });
       return true; // Indicates async response
       
+    case 'simulateFallback':
+      // Direct request to use the simulate fallback
+      try {
+        const content = `Title: ${request.title || ''}\nURL: ${request.url || ''}`;
+        const category = simulateAICategory(content);
+        sendResponse({ category: category });
+      } catch (error) {
+        debugLogger.error('Error in simulate fallback:', error);
+        sendResponse({ category: 'Uncategorized', error: error.message });
+      }
+      return true;
+
     case 'updateCategories':
       // Update the predefined categories with user-defined ones
       try {
@@ -276,7 +299,7 @@ async function analyzeWithGemini(content, availableCategories, customPrompt) {
     
     debugLogger.log('Gemini prompt prepared', {
       promptLength: fullPrompt.length,
-      availableCategories: availableCategories
+      availableCategories: availableCategories,
     });
     
     try {
@@ -291,7 +314,7 @@ async function analyzeWithGemini(content, availableCategories, customPrompt) {
       
       // Create a session with a timeout
       const sessionPromise = ai.languageModel.create({
-        systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Include one relevant emoji before the category name. Capitalize the first letter of each word in the category. Always respond in English only.'
+        systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Capitalize the first letter of each word in the category. Always respond in English only.'
       });
       
       const timeoutPromise = new Promise((_, reject) => {
@@ -323,7 +346,8 @@ async function analyzeWithGemini(content, availableCategories, customPrompt) {
     }
   } catch (error) {
     debugLogger.error('Error analyzing with Gemini:', error);
-    return 'Misc';
+    // Use simulate fallback for any error
+    return simulateAICategory(content.substring(0, 750));
   } finally {
     // Ensure session cleanup
     if (session) {
