@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Set default values if not found
     if (settings.analysisPrompt === undefined) {
-      settings.analysisPrompt = "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name. Include one relevant emoji before the category name.";
+      settings.analysisPrompt = "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name.";
       chrome.storage.sync.set({ analysisPrompt: settings.analysisPrompt });
     }
     
