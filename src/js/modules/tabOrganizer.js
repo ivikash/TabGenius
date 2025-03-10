@@ -256,8 +256,6 @@ export class TabOrganizer {
       return { category: 'Misc', error: error.message };
     }
   }
-}
-  
 
   /**
    * Analyze tab with Ollama API
