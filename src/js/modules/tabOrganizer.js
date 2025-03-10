@@ -193,27 +193,24 @@ export class TabOrganizer {
    * @returns {Promise<Object>} - Analysis result
    */
   async analyzeWithGemini(prompt, tabId) {
-    return new Promise((resolve, reject) => {
+    try {
       // Get the timeout setting or use default
-      chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt', 'tabSorterCategories'], (result) => {
-        const timeoutSeconds = result.analysisTimeout || 15;
-        const customPrompt = result.analysisPrompt || prompt;
-        const categories = result.tabSorterCategories || [];
-        
-        debugLogger.log(`Analyzing tab ${tabId} with Gemini`, {
-          timeoutSeconds: timeoutSeconds,
-          prompt: customPrompt,
-          categoriesCount: categories.length
-        });
-        
-        // Set a timeout to prevent getting stuck
-        const timeoutId = setTimeout(() => {
-          debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
-            timeoutSeconds: timeoutSeconds
-          });
-          resolve({ category: 'Misc', error: 'Analysis timeout' });
-        }, timeoutSeconds * 1000); // Convert seconds to milliseconds
-        
+      const result = await new Promise(resolve => {
+        chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt', 'tabSorterCategories'], resolve);
+      });
+      
+      const timeoutSeconds = result.analysisTimeout || 15;
+      const customPrompt = result.analysisPrompt || prompt;
+      const categories = result.tabSorterCategories || [];
+      
+      debugLogger.log(`Analyzing tab ${tabId} with Gemini`, {
+        timeoutSeconds: timeoutSeconds,
+        prompt: customPrompt,
+        categoriesCount: categories.length
+      });
+      
+      // Create a promise that will resolve with the message response or reject on timeout
+      const analysisPromise = new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
           {
             action: 'analyzeWithGemini',
@@ -222,29 +219,43 @@ export class TabOrganizer {
             categories: categories
           },
           (response) => {
-          // Clear the timeout since we got a response
-          clearTimeout(timeoutId);
-          
-          if (chrome.runtime.lastError) {
-            debugLogger.warn(`Error in Gemini analysis for tab ${tabId}:`, chrome.runtime.lastError);
-            resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
-          } else if (response && response.error) {
-            debugLogger.warn(`Error response from Gemini for tab ${tabId}:`, response.error);
-            resolve({ category: 'Misc', error: response.error });
-          } else if (!response) {
-            debugLogger.warn(`No response from Gemini for tab ${tabId}`);
-            resolve({ category: 'Misc', error: 'No response' });
-          } else {
-            debugLogger.log(`Gemini analysis for tab ${tabId} complete:`, {
-              category: response.category,
-              tabId: tabId
-            });
-            resolve(response);
+            if (chrome.runtime.lastError) {
+              debugLogger.warn(`Error in Gemini analysis for tab ${tabId}:`, chrome.runtime.lastError);
+              resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
+            } else if (response && response.error) {
+              debugLogger.warn(`Error response from Gemini for tab ${tabId}:`, response.error);
+              resolve({ category: 'Misc', error: response.error });
+            } else if (!response) {
+              debugLogger.warn(`No response from Gemini for tab ${tabId}`);
+              resolve({ category: 'Misc', error: 'No response' });
+            } else {
+              debugLogger.log(`Gemini analysis for tab ${tabId} complete:`, {
+                category: response.category,
+                tabId: tabId
+              });
+              resolve(response);
+            }
           }
-        }
-      );
-    });
-  });
+        );
+      });
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise(resolve => {
+        setTimeout(() => {
+          debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
+            timeoutSeconds: timeoutSeconds
+          });
+          resolve({ category: 'Misc', error: 'Analysis timeout' });
+        }, timeoutSeconds * 1000);
+      });
+      
+      // Race the analysis against the timeout
+      return await Promise.race([analysisPromise, timeoutPromise]);
+    } catch (error) {
+      debugLogger.error(`Unexpected error in Gemini analysis for tab ${tabId}:`, error);
+      return { category: 'Misc', error: error.message };
+    }
+  }
 }
   
 
@@ -257,27 +268,24 @@ export class TabOrganizer {
    * @returns {Promise<Object>} - Analysis result
    */
   async analyzeWithOllama(url, model, prompt, tabId) {
-    return new Promise((resolve, reject) => {
+    try {
       // Get the timeout setting or use default
-      chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt'], (result) => {
-        const timeoutSeconds = result.analysisTimeout || 15;
-        const customPrompt = result.analysisPrompt || prompt;
-        
-        debugLogger.log(`Analyzing tab ${tabId} with Ollama`, {
-          timeoutSeconds: timeoutSeconds,
-          url: url,
-          model: model,
-          prompt: customPrompt
-        });
-        
-        // Set a timeout to prevent getting stuck
-        const timeoutId = setTimeout(() => {
-          debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
-            timeoutSeconds: timeoutSeconds
-          });
-          resolve({ category: 'Misc', error: 'Analysis timeout' });
-        }, timeoutSeconds * 1000); // Convert seconds to milliseconds
-        
+      const result = await new Promise(resolve => {
+        chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt'], resolve);
+      });
+      
+      const timeoutSeconds = result.analysisTimeout || 15;
+      const customPrompt = result.analysisPrompt || prompt;
+      
+      debugLogger.log(`Analyzing tab ${tabId} with Ollama`, {
+        timeoutSeconds: timeoutSeconds,
+        url: url,
+        model: model,
+        prompt: customPrompt
+      });
+      
+      // Create a promise that will resolve with the message response or reject on timeout
+      const analysisPromise = new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
           {
             action: 'analyzeWithOllama',
@@ -287,17 +295,43 @@ export class TabOrganizer {
             tabId: tabId
           },
           (response) => {
-          // Clear the timeout since we got a response
-          clearTimeout(timeoutId);
-          
-          if (chrome.runtime.lastError) {
-            debugLogger.warn(`Error in Ollama analysis for tab ${tabId}:`, chrome.runtime.lastError);
-            resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
-          } else if (response && response.error) {
-            debugLogger.warn(`Error response from Ollama for tab ${tabId}:`, response.error);
-            resolve({ category: 'Misc', error: response.error });
-          } else if (!response) {
-            debugLogger.warn(`No response from Ollama for tab ${tabId}`);
+            if (chrome.runtime.lastError) {
+              debugLogger.warn(`Error in Ollama analysis for tab ${tabId}:`, chrome.runtime.lastError);
+              resolve({ category: 'Misc', error: chrome.runtime.lastError.message });
+            } else if (response && response.error) {
+              debugLogger.warn(`Error response from Ollama for tab ${tabId}:`, response.error);
+              resolve({ category: 'Misc', error: response.error });
+            } else if (!response) {
+              debugLogger.warn(`No response from Ollama for tab ${tabId}`);
+              resolve({ category: 'Misc', error: 'No response' });
+            } else {
+              debugLogger.log(`Ollama analysis for tab ${tabId} complete:`, {
+                category: response.category,
+                tabId: tabId
+              });
+              resolve(response);
+            }
+          }
+        );
+      });
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise(resolve => {
+        setTimeout(() => {
+          debugLogger.warn(`Analysis timeout for tab ${tabId}, falling back to default category`, {
+            timeoutSeconds: timeoutSeconds
+          });
+          resolve({ category: 'Misc', error: 'Analysis timeout' });
+        }, timeoutSeconds * 1000);
+      });
+      
+      // Race the analysis against the timeout
+      return await Promise.race([analysisPromise, timeoutPromise]);
+    } catch (error) {
+      debugLogger.error(`Unexpected error in Ollama analysis for tab ${tabId}:`, error);
+      return { category: 'Misc', error: error.message };
+    }
+  }
             resolve({ category: 'Misc', error: 'No response' });
           } else {
             debugLogger.log(`Ollama analysis for tab ${tabId} complete:`, {

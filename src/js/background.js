@@ -290,24 +290,25 @@ async function analyzeWithGemini(content, availableCategories, customPrompt) {
       }
       
       // Create a session with a timeout
-      session = await Promise.race([
-        ai.languageModel.create({
-          systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Include one relevant emoji before the category name. Capitalize the first letter of each word in the category. Always respond in English only.'
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session creation timeout')), analysisTimeout * 1000)
-        )
-      ]);
+      const sessionPromise = ai.languageModel.create({
+        systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Include one relevant emoji before the category name. Capitalize the first letter of each word in the category. Always respond in English only.'
+      });
+      
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Session creation timeout')), 3000);
+      });
+      
+      session = await Promise.race([sessionPromise, timeoutPromise]);
       
       debugLogger.log("Gemini session created successfully");
       
       // Get response from Gemini with timeout
-      const response = await Promise.race([
-        session.prompt(fullPrompt),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Prompt response timeout')), analysisTimeout * 1000)
-        )
-      ]);
+      const promptPromise = session.prompt(fullPrompt);
+      const promptTimeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Prompt response timeout')), 5000);
+      });
+      
+      const response = await Promise.race([promptPromise, promptTimeoutPromise]);
       
       debugLogger.log("Gemini response received:", {
         rawResponse: response

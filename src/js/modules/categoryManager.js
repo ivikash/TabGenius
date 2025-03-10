@@ -43,39 +43,35 @@ export class CategoryManager {
    * @returns {Promise<void>}
    */
   async loadCategories() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.sync.get('tabSorterCategories', (result) => {
+    try {
+      const result = await new Promise((resolve, reject) => {
+        chrome.storage.sync.get('tabSorterCategories', (data) => {
           if (chrome.runtime.lastError) {
-            debugLogger.error('Error loading categories:', chrome.runtime.lastError);
-            // Use default categories if there's an error
-            this.categories = [...this.defaultCategories];
-            resolve();
-            return;
-          }
-          
-          if (result && result.tabSorterCategories && Array.isArray(result.tabSorterCategories)) {
-            this.categories = result.tabSorterCategories;
-            debugLogger.log('Loaded custom categories', { 
-              count: this.categories.length,
-              categories: this.categories
-            });
+            reject(chrome.runtime.lastError);
           } else {
-            // Use default categories if none are saved
-            this.categories = [...this.defaultCategories];
-            debugLogger.log('Using default categories', { 
-              count: this.categories.length
-            });
+            resolve(data);
           }
-          resolve();
         });
-      } catch (error) {
-        debugLogger.error('Error accessing storage:', error);
-        // Use default categories if there's an exception
+      });
+      
+      if (result && result.tabSorterCategories && Array.isArray(result.tabSorterCategories)) {
+        this.categories = result.tabSorterCategories;
+        debugLogger.log('Loaded custom categories', { 
+          count: this.categories.length,
+          categories: this.categories
+        });
+      } else {
+        // Use default categories if none are saved
         this.categories = [...this.defaultCategories];
-        resolve();
+        debugLogger.log('Using default categories', { 
+          count: this.categories.length
+        });
       }
-    });
+    } catch (error) {
+      debugLogger.error('Error accessing storage:', error);
+      // Use default categories if there's an exception
+      this.categories = [...this.defaultCategories];
+    }
   }
 
   /**
