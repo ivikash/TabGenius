@@ -68,17 +68,18 @@ export class TabOrganizer {
    */
   async analyzeTabs(tabs, modelConfig) {
     const tabCategories = {};
-    const prompt = "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name.";
     
-    // Get timeout setting
-    const settings = await chrome.storage.sync.get(['analysisTimeout', 'tabSorterCategories']);
+    // Get timeout setting and custom prompt
+    const settings = await chrome.storage.sync.get(['analysisTimeout', 'tabSorterCategories', 'analysisPrompt']);
     const timeoutSeconds = settings.analysisTimeout || 15;
     const availableCategories = settings.tabSorterCategories || [];
+    const prompt = settings.analysisPrompt || "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name. Include one relevant emoji before the category name.";
     
     debugLogger.log('Starting tab analysis', {
       tabCount: tabs.length,
       timeoutSeconds: timeoutSeconds,
       modelType: modelConfig.type,
+      prompt: prompt,
       availableCategories: availableCategories.length > 0 ? availableCategories : 'using defaults'
     });
     
@@ -194,12 +195,13 @@ export class TabOrganizer {
   async analyzeWithGemini(prompt, tabId) {
     return new Promise((resolve, reject) => {
       // Get the timeout setting or use default
-      chrome.storage.sync.get('analysisTimeout', (result) => {
+      chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt'], (result) => {
         const timeoutSeconds = result.analysisTimeout || 15;
+        const customPrompt = result.analysisPrompt || prompt;
         
         debugLogger.log(`Analyzing tab ${tabId} with Gemini`, {
           timeoutSeconds: timeoutSeconds,
-          prompt: prompt
+          prompt: customPrompt
         });
         
         // Set a timeout to prevent getting stuck
@@ -213,7 +215,7 @@ export class TabOrganizer {
         chrome.runtime.sendMessage(
           {
             action: 'analyzeWithGemini',
-            prompt: prompt,
+            prompt: customPrompt,
             tabId: tabId
           },
           (response) => {
@@ -254,14 +256,15 @@ export class TabOrganizer {
   async analyzeWithOllama(url, model, prompt, tabId) {
     return new Promise((resolve, reject) => {
       // Get the timeout setting or use default
-      chrome.storage.sync.get('analysisTimeout', (result) => {
+      chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt'], (result) => {
         const timeoutSeconds = result.analysisTimeout || 15;
+        const customPrompt = result.analysisPrompt || prompt;
         
         debugLogger.log(`Analyzing tab ${tabId} with Ollama`, {
           timeoutSeconds: timeoutSeconds,
           url: url,
           model: model,
-          prompt: prompt
+          prompt: customPrompt
         });
         
         // Set a timeout to prevent getting stuck
@@ -277,7 +280,7 @@ export class TabOrganizer {
             action: 'analyzeWithOllama',
             url: url,
             model: model,
-            prompt: prompt,
+            prompt: customPrompt,
             tabId: tabId
           },
           (response) => {

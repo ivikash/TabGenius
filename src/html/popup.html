@@ -89,18 +89,27 @@
     </div>
     
     <div class="section settings">
-      <h2><i class="material-icons-round">settings</i> Preferences</h2>
-      <div class="setting-option">
-        <input type="checkbox" id="enableNotifications" checked>
-        <label for="enableNotifications">Enable desktop notifications</label>
+      <div class="section-header collapsible" id="preferencesHeader">
+        <h2><i class="material-icons-round">settings</i> Preferences</h2>
+        <i class="material-icons-round toggle-icon">expand_more</i>
       </div>
-      <div class="setting-option">
-        <label for="analysisTimeout">Analysis timeout (seconds):</label>
-        <input type="number" id="analysisTimeout" min="5" max="60" value="15" class="number-input">
-      </div>
-      <div class="setting-option">
-        <input type="checkbox" id="enableDebugMode">
-        <label for="enableDebugMode">Enable debug mode</label>
+      <div class="section-content" id="preferencesContent">
+        <div class="setting-option">
+          <input type="checkbox" id="enableNotifications" checked>
+          <label for="enableNotifications">Enable desktop notifications</label>
+        </div>
+        <div class="setting-option">
+          <label for="analysisTimeout">Analysis timeout (seconds):</label>
+          <input type="number" id="analysisTimeout" min="5" max="60" value="15" class="number-input">
+        </div>
+        <div class="setting-option">
+          <label for="analysisPrompt">Analysis prompt:</label>
+          <textarea id="analysisPrompt" rows="3" class="text-area-input">Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name. Include one relevant emoji before the category name.</textarea>
+        </div>
+        <div class="setting-option">
+          <input type="checkbox" id="enableDebugMode">
+          <label for="enableDebugMode">Enable debug mode</label>
+        </div>
       </div>
     </div>
     

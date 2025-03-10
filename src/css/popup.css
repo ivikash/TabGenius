@@ -79,6 +79,43 @@ h2 .material-icons-round {
   margin-bottom: 0;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.section-header h2 {
+  margin: 0;
+}
+
+.toggle-icon {
+  color: #5f6368;
+  transition: transform 0.3s ease;
+}
+
+.section-header.active .toggle-icon {
+  transform: rotate(180deg);
+}
+
+.section-content {
+  max-height: 1000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  padding-top: 16px;
+}
+
+.section-content.collapsed {
+  max-height: 0;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .button-group {
   display: flex;
   justify-content: space-between;
@@ -400,8 +437,9 @@ footer {
 
 .setting-option {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .setting-option input[type="checkbox"] {
@@ -424,4 +462,22 @@ footer {
   display: inline;
   margin-top: 0;
   cursor: pointer;
+}
+
+.setting-option .text-area-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  margin-top: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  resize: vertical;
+  background-color: #f8f9fa;
+}
+
+.setting-option .text-area-input:focus {
+  border-color: #4285f4;
+  outline: none;
+  background-color: #fff;
 }

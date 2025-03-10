@@ -19,19 +19,71 @@ document.addEventListener('DOMContentLoaded', async () => {
       'tabGeniusDebugMode', 
       'notificationsEnabled', 
       'analysisTimeout',
-      'tabSorterCategories'
+      'tabSorterCategories',
+      'analysisPrompt'
     ]);
+    
+    // Set default values if not found
+    if (settings.analysisPrompt === undefined) {
+      settings.analysisPrompt = "Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name. Include one relevant emoji before the category name.";
+      chrome.storage.sync.set({ analysisPrompt: settings.analysisPrompt });
+    }
+    
+    // Update UI with loaded settings
+    document.getElementById('enableNotifications').checked = settings.notificationsEnabled !== false;
+    document.getElementById('analysisTimeout').value = settings.analysisTimeout || 15;
+    document.getElementById('enableDebugMode').checked = settings.tabGeniusDebugMode === true;
+    document.getElementById('analysisPrompt').value = settings.analysisPrompt;
     
     debugLogger.log('Extension settings loaded:', {
       debugMode: settings.tabGeniusDebugMode === true,
       notificationsEnabled: settings.notificationsEnabled !== false,
       analysisTimeout: settings.analysisTimeout || 15,
-      categoriesCount: settings.tabSorterCategories ? settings.tabSorterCategories.length : 'default'
+      categoriesCount: settings.tabSorterCategories ? settings.tabSorterCategories.length : 'default',
+      analysisPrompt: settings.analysisPrompt
     });
   } catch (error) {
     debugLogger.error('Error loading settings:', error);
   }
 
+  // Save settings when changed
+  document.getElementById('enableNotifications').addEventListener('change', (e) => {
+    chrome.storage.sync.set({ notificationsEnabled: e.target.checked });
+    debugLogger.log('Notifications setting updated:', e.target.checked);
+  });
+  
+  document.getElementById('analysisTimeout').addEventListener('change', (e) => {
+    const timeout = parseInt(e.target.value);
+    if (timeout >= 5 && timeout <= 60) {
+      chrome.storage.sync.set({ analysisTimeout: timeout });
+      debugLogger.log('Analysis timeout updated:', timeout);
+    }
+  });
+  
+  document.getElementById('enableDebugMode').addEventListener('change', (e) => {
+    chrome.storage.sync.set({ tabGeniusDebugMode: e.target.checked });
+    debugLogger.setDebugMode(e.target.checked);
+    debugLogger.log('Debug mode updated:', e.target.checked);
+  });
+  
+  document.getElementById('analysisPrompt').addEventListener('change', (e) => {
+    chrome.storage.sync.set({ analysisPrompt: e.target.value });
+    debugLogger.log('Analysis prompt updated:', e.target.value);
+  });
+  
+  // Make preferences section collapsible
+  const preferencesHeader = document.getElementById('preferencesHeader');
+  const preferencesContent = document.getElementById('preferencesContent');
+  
+  preferencesHeader.addEventListener('click', () => {
+    preferencesHeader.classList.toggle('active');
+    if (preferencesContent.classList.contains('collapsed')) {
+      preferencesContent.classList.remove('collapsed');
+    } else {
+      preferencesContent.classList.add('collapsed');
+    }
+  });
+  
   // Initialize UI components
   uiManager.init();
   debugLogger.log('UI initialized');

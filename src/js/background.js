@@ -221,13 +221,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * Analyze tab content with Google's Gemini API
  * @param {string} content - Tab content to analyze
  * @param {Array<string>} availableCategories - Available categories to choose from
+ * @param {string} customPrompt - Custom prompt for the AI model
  * @returns {Promise<string>} - Category name
  */
-async function analyzeWithGemini(content, availableCategories) {
+async function analyzeWithGemini(content, availableCategories, customPrompt) {
   try {
     debugLogger.log('Analyzing content with Gemini', {
       contentLength: content.length,
-      categoriesCount: availableCategories.length
+      categoriesCount: availableCategories.length,
+      customPrompt: customPrompt
     });
     
     // Trim content to 750 characters for efficiency
@@ -242,7 +244,7 @@ async function analyzeWithGemini(content, availableCategories) {
     }
     
     // Prepare prompt with content and predefined categories
-    const fullPrompt = `Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name.\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${availableCategories.join(', ')}. Respond with only 1-2 words in English.`;
+    const fullPrompt = `${customPrompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${availableCategories.join(', ')}. Respond with only 1-2 words in English.`;
     
     debugLogger.log('Gemini prompt prepared', {
       promptLength: fullPrompt.length,
@@ -260,7 +262,7 @@ async function analyzeWithGemini(content, availableCategories) {
           try {
             // Create a session with a timeout
             const sessionPromise = ai.languageModel.create({
-              systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Capitalize the first letter of each word in the category. Always respond in English only.'
+              systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Include one relevant emoji before the category name. Capitalize the first letter of each word in the category. Always respond in English only.'
             });
             
             // Add timeout to session creation
