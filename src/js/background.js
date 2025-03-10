@@ -143,11 +143,17 @@ function simulateAICategory(content) {
  * @param {string} message - Notification message
  */
 function showNotification(title, message) {
-  chrome.notifications.create({
-    type: 'basic',
-    iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-    title: title,
-    message: message
+  // Check if notifications are enabled
+  chrome.storage.sync.get('notificationsEnabled', (result) => {
+    // Only show notification if enabled (default is true)
+    if (result.notificationsEnabled !== false) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+        title: title,
+        message: message
+      });
+    }
   });
 }
 
@@ -156,12 +162,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Handle different message actions
   switch (request.action) {
     case 'analyzeWithGemini':
-      analyzeWithGemini(request.prompt, request.tabId)
-        .then(sendResponse)
-        .catch(error => {
+      // First get the tab content
+      getTabContent(request.tabId).then(async (content) => {
+        try {
+          const result = await analyzeWithGemini(
+            content,
+            request.categories,
+            request.prompt
+          );
+          sendResponse({ category: result });
+        } catch (error) {
+          debugLogger.error('Gemini analysis error:', error);
           showNotification('Tab Analysis Error', error.message || 'Failed to analyze tab');
           sendResponse({ error: error.message });
-        });
+        }
+      }).catch(error => {
+        debugLogger.error('Error getting tab content:', error);
+        sendResponse({ error: 'Failed to get tab content' });
+      });
       return true; // Indicates async response
 
     case 'analyzeWithOllama':
@@ -225,10 +243,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * @returns {Promise<string>} - Category name
  */
 async function analyzeWithGemini(content, availableCategories, customPrompt) {
+  let session = null;
   try {
     debugLogger.log('Analyzing content with Gemini', {
       contentLength: content.length,
-      categoriesCount: availableCategories.length,
+      categoriesAvailable: availableCategories ? availableCategories.length : 0,
       customPrompt: customPrompt
     });
     
@@ -238,86 +257,81 @@ async function analyzeWithGemini(content, availableCategories, customPrompt) {
     // Check if content is too short or indicates an error
     if (trimmedContent.length < 10 || trimmedContent.includes('Unable to access tab content')) {
       debugLogger.warn("Insufficient content for analysis, using tab title");
-      
-      // Use simulated categorization with title
+      return simulateAICategory(trimmedContent);
+    }
+    
+    // Check if Chrome AI API is available
+    if (typeof ai === 'undefined' || !ai.languageModel) {
+      debugLogger.error('Chrome AI API not available');
       return simulateAICategory(trimmedContent);
     }
     
     // Prepare prompt with content and predefined categories
-    const fullPrompt = `${customPrompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${availableCategories.join(', ')}. Respond with only 1-2 words in English.`;
+    let categoriesText = "various categories";
+    if (Array.isArray(availableCategories) && availableCategories.length > 0) {
+      categoriesText = availableCategories.join(', ');
+    }
+    
+    const fullPrompt = `${customPrompt}\n\nContent: ${trimmedContent}\n\nChoose from these categories if possible: ${categoriesText}. Respond with only 1-2 words in English.`;
     
     debugLogger.log('Gemini prompt prepared', {
       promptLength: fullPrompt.length,
       availableCategories: availableCategories
     });
     
-    // Check if Google's Gemini API is available
-    if (typeof ai !== 'undefined' && ai.languageModel) {
-      try {
-        // Check capabilities
-        const capabilities = await ai.languageModel.capabilities();
-        debugLogger.log("Gemini capabilities:", capabilities);
-        
-        if (capabilities.available !== 'no') {
-          try {
-            // Create a session with a timeout
-            const sessionPromise = ai.languageModel.create({
-              systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Include one relevant emoji before the category name. Capitalize the first letter of each word in the category. Always respond in English only.'
-            });
-            
-            // Add timeout to session creation
-            const session = await Promise.race([
-              sessionPromise,
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Session creation timeout')), 3000)
-              )
-            ]);
-            
-            debugLogger.log("Gemini session created successfully");
-            
-            // Get response from Gemini with timeout
-            const responsePromise = session.prompt(fullPrompt);
-            const response = await Promise.race([
-              responsePromise,
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Prompt response timeout')), 5000)
-              )
-            ]);
-            
-            debugLogger.log("Gemini response received:", {
-              rawResponse: response
-            });
-            
-            // Clean up and format the response
-            const category = formatCategory(response, availableCategories);
-            
-            // Destroy the session to free resources
-            try {
-              session.destroy();
-            } catch (destroyError) {
-              debugLogger.warn("Error destroying Gemini session:", destroyError);
-            }
-            
-            return category;
-          } catch (promptError) {
-            debugLogger.warn("Error with Gemini prompt, falling back to simulation:", promptError);
-            return simulateAICategory(trimmedContent);
-          }
-        } else {
-          debugLogger.warn("Gemini model not available, falling back to simulation");
-          return simulateAICategory(trimmedContent);
-        }
-      } catch (apiError) {
-        debugLogger.error("Error using Chrome's Prompt API:", apiError);
+    try {
+      // Check capabilities
+      const capabilities = await ai.languageModel.capabilities();
+      debugLogger.log("Gemini capabilities:", capabilities);
+      
+      if (capabilities.available === 'no') {
+        debugLogger.warn("Gemini model not available, falling back to simulation");
         return simulateAICategory(trimmedContent);
       }
-    } else {
-      debugLogger.warn("Chrome's Prompt API not available, falling back to simulation");
+      
+      // Create a session with a timeout
+      session = await Promise.race([
+        ai.languageModel.create({
+          systemPrompt: 'You are a helpful assistant that categorizes web pages. Respond with a single category name (1-2 words maximum) that best describes the content. Include one relevant emoji before the category name. Capitalize the first letter of each word in the category. Always respond in English only.'
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session creation timeout')), analysisTimeout * 1000)
+        )
+      ]);
+      
+      debugLogger.log("Gemini session created successfully");
+      
+      // Get response from Gemini with timeout
+      const response = await Promise.race([
+        session.prompt(fullPrompt),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Prompt response timeout')), analysisTimeout * 1000)
+        )
+      ]);
+      
+      debugLogger.log("Gemini response received:", {
+        rawResponse: response
+      });
+      
+      // Clean up and format the response
+      return formatCategory(response, availableCategories);
+      
+    } catch (error) {
+      debugLogger.error("Error using Gemini API:", error);
       return simulateAICategory(trimmedContent);
     }
   } catch (error) {
     debugLogger.error('Error analyzing with Gemini:', error);
     return 'Misc';
+  } finally {
+    // Ensure session cleanup
+    if (session) {
+      try {
+        await session.destroy();
+      } catch (error) {
+        debugLogger.warn('Error destroying Gemini session:', error);
+      }
+    }
   }
 }
 

@@ -4,7 +4,6 @@
  */
 export class UIManager {
   constructor() {
-    this.statusElement = null;
     this.categoryManagerSection = null;
     this.notificationsEnabled = true;
   }
@@ -13,25 +12,48 @@ export class UIManager {
    * Initialize UI components
    */
   init() {
-    this.statusElement = document.getElementById('status');
-    this.categoryManagerSection = document.getElementById('categoryManagerSection');
-    
-    // Set default placeholder status
-    if (this.statusElement) {
-      this.statusElement.textContent = 'Ready to organize your tabs!';
-      this.statusElement.classList.add('placeholder');
-    }
-    
-    // Initialize toggle for category manager
-    document.getElementById('toggleCategoryManager').addEventListener('click', () => {
-      this.toggleCategoryManager();
-    });
-    
     // Initialize Ollama options visibility
     this.toggleOllamaOptions(document.getElementById('model-select').value === 'ollama');
     
     // Initialize notifications checkbox
     this.initNotificationsCheckbox();
+    
+    // Initialize collapsible sections
+    this.initCollapsibleSections();
+  }
+
+  /**
+   * Initialize collapsible sections
+   */
+  initCollapsibleSections() {
+    const collapsibles = document.querySelectorAll('.collapsible');
+    
+    collapsibles.forEach(header => {
+      const content = document.getElementById(header.id.replace('Header', 'Content'));
+      if (!content) return;
+      
+      header.addEventListener('click', () => {
+        // Toggle collapsed state
+        content.classList.toggle('collapsed');
+        
+        // Toggle active class on header
+        header.classList.toggle('active');
+        
+        // Update aria attributes
+        const isExpanded = !content.classList.contains('collapsed');
+        header.setAttribute('aria-expanded', isExpanded);
+        
+        // Update icon
+        const icon = header.querySelector('.toggle-icon');
+        if (icon) {
+          icon.textContent = isExpanded ? 'expand_less' : 'expand_more';
+        }
+      });
+      
+      // Set initial state
+      const isExpanded = !content.classList.contains('collapsed');
+      header.setAttribute('aria-expanded', isExpanded);
+    });
   }
 
   /**
@@ -76,46 +98,38 @@ export class UIManager {
   }
 
   /**
+   * Show a notification with the extension's icon
+   * @param {string} title - Notification title
+   * @param {string} message - Notification message
+   */
+  showNotification(title, message) {
+    if (!this.notificationsEnabled) return;
+    
+    chrome.runtime.sendMessage({
+      action: 'showNotification',
+      title: title,
+      message: message
+    });
+  }
+  
+  /**
    * Show status message with optional type (loading, success, error)
    * @param {string} message - Status message to display
    * @param {string} type - Type of status (loading, success, error)
    */
   showStatus(message, type = '') {
-    if (!this.statusElement) return;
-    
-    // Clear previous classes
-    this.statusElement.className = 'status';
-    
-    // Add type class if provided
-    if (type) {
-      this.statusElement.classList.add(type);
-    }
-    
-    // Set message
-    this.statusElement.textContent = message;
-    
-    // Show notification for errors and success
+    // Just show a notification for errors and success
     if ((type === 'error' || type === 'success') && this.notificationsEnabled) {
       this.showNotification(type === 'error' ? 'Error' : 'Success', message);
     }
     
-    // Auto-clear success messages after 3 seconds
-    if (type === 'success') {
-      setTimeout(() => {
-        if (this.statusElement.textContent === message) {
-          // Reset to placeholder text
-          this.statusElement.textContent = 'Ready to organize your tabs!';
-          this.statusElement.className = 'status placeholder';
-        }
-      }, 3000);
+    // Log the status message
+    if (type === 'error') {
+      console.error(message);
+    } else {
+      console.log(message);
     }
   }
-
-  /**
-   * Show a notification with the extension's icon
-   * @param {string} title - Notification title
-   * @param {string} message - Notification message
-   */
   showNotification(title, message) {
     if (!this.notificationsEnabled) return;
     
@@ -141,15 +155,11 @@ export class UIManager {
 
   /**
    * Toggle visibility of category manager section
+   * @deprecated This method is no longer used as the category manager is now always visible
    */
   toggleCategoryManager() {
-    if (!this.categoryManagerSection) return;
-    
-    if (this.categoryManagerSection.classList.contains('hidden')) {
-      this.categoryManagerSection.classList.remove('hidden');
-    } else {
-      this.categoryManagerSection.classList.add('hidden');
-    }
+    // This method is kept for backward compatibility but is no longer used
+    console.warn('toggleCategoryManager is deprecated');
   }
 
   /**

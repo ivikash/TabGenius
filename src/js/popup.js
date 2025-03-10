@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tabOrganizer = new TabOrganizer(tabStateManager);
   const uiManager = new UIManager();
   const categoryManager = new CategoryManager();
+  
+  // Initialize UI components
+  uiManager.init();
 
   // Load and log all settings
   try {
@@ -71,17 +74,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     debugLogger.log('Analysis prompt updated:', e.target.value);
   });
   
+  // Make categories section collapsible
+  const categoriesHeader = document.getElementById('categoriesHeader');
+  const categoriesContent = document.getElementById('categoriesContent');
+  
+  categoriesHeader.addEventListener('click', () => {
+    categoriesHeader.classList.toggle('active');
+    categoriesContent.classList.toggle('collapsed');
+  });
+  
   // Make preferences section collapsible
   const preferencesHeader = document.getElementById('preferencesHeader');
   const preferencesContent = document.getElementById('preferencesContent');
   
   preferencesHeader.addEventListener('click', () => {
     preferencesHeader.classList.toggle('active');
-    if (preferencesContent.classList.contains('collapsed')) {
-      preferencesContent.classList.remove('collapsed');
-    } else {
-      preferencesContent.classList.add('collapsed');
-    }
+    preferencesContent.classList.toggle('collapsed');
   });
   
   // Initialize UI components

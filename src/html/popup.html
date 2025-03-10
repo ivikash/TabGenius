@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tab Genius</title>
   <link rel="stylesheet" href="../css/popup.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round">
 </head>
 <body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
   <div class="container">
     <header>
       <div class="logo">
@@ -18,97 +19,99 @@
       <p class="tagline">Smart tab organization powered by AI</p>
     </header>
     
+    <main id="main-content">
     <div class="section">
-      <h2><i class="material-icons-round">sort</i> Quick Sort</h2>
+      <h2><i class="material-icons-round" aria-hidden="true">sort</i> <span class="button-label">Quick Sort</span></h2>
       <div class="button-group">
-        <button id="sortByTitle" class="primary-button">
-          <i class="material-icons-round">sort_by_alpha</i> Alphabetical
+        <button id="sortByTitle" class="primary-button" aria-label="Sort tabs alphabetically by title" title="Sort tabs alphabetically by title">
+          <i class="material-icons-round" aria-hidden="true">sort_by_alpha</i> <span class="button-label">Alphabetical</span>
         </button>
-        <button id="sortByUrl" class="primary-button">
-          <i class="material-icons-round">language</i> By Domain
+        <button id="sortByUrl" class="primary-button" aria-label="Sort tabs by domain" title="Sort tabs by domain">
+          <i class="material-icons-round" aria-hidden="true">language</i> <span class="button-label">By Domain</span>
         </button>
       </div>
     </div>
     
     <div class="section">
-      <h2><i class="material-icons-round">psychology</i> AI Organization</h2>
+      <h2><i class="material-icons-round" aria-hidden="true">psychology</i> <span class="button-label">Organize tabs using AI</span></h2>
       <div class="model-selection">
-        <select id="model-select">
+        <select id="model-select" aria-label="Select AI model">
           <option value="gemini">Google Gemini</option>
           <option value="ollama">Ollama</option>
         </select>
       </div>
       <div id="ollama-options" class="hidden">
         <label for="ollama-url">Ollama URL:</label>
-        <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434">
+        <input type="text" id="ollama-url" value="http://localhost:11434" placeholder="http://localhost:11434" aria-label="Ollama server URL">
         <label for="ollama-model">Model Name:</label>
-        <input type="text" id="ollama-model" value="llama3.2" placeholder="llama3.2">
+        <input type="text" id="ollama-model" value="llama3.2" placeholder="llama3.2" aria-label="Ollama model name">
       </div>
       <div class="button-group">
-        <button id="organizeByContent" class="primary-button">
-          <i class="material-icons-round">auto_awesome</i> Organize Tabs
+        <button id="organizeByContent" class="primary-button" aria-label="Organize tabs using AI" title="Organize tabs using AI">
+          <i class="material-icons-round" aria-hidden="true">auto_awesome</i> <span class="button-label">Organize Tabs</span>
         </button>
-        <button id="ungroupAllTabs" class="secondary-button">
-          <i class="material-icons-round">delete</i> Delete Groups
-        </button>
-      </div>
-      <div class="category-manager-toggle">
-        <button id="toggleCategoryManager" class="text-button">
-          <i class="material-icons-round">edit</i> Edit Categories
+        <button id="ungroupAllTabs" class="secondary-button" aria-label="Delete all tab groups" title="Delete all tab groups">
+          <i class="material-icons-round" aria-hidden="true">delete</i> <span class="button-label">Delete Groups</span>
         </button>
       </div>
     </div>
-    
-    <div id="categoryManagerSection" class="section hidden">
-      <h2><i class="material-icons-round">label</i> Categories</h2>
-      <div class="category-tags" id="categoryTags">
-        <!-- Category tags will be added here dynamically -->
-      </div>
-      <div class="add-category">
-        <input type="text" id="newCategoryInput" placeholder="Enter category names (comma separated)">
-        <button id="addCategoryBtn" class="icon-button">
-          <i class="material-icons-round">add</i>
-        </button>
-      </div>
-      <div class="category-actions">
-        <button id="saveCategoriesBtn" class="primary-button">
-          <i class="material-icons-round">save</i> Save Changes
-        </button>
-        <button id="resetCategoriesBtn" class="secondary-button">
-          <i class="material-icons-round">restart_alt</i> Reset
-        </button>
-      </div>
-    </div>
-    
-    <div id="status" class="status"></div>
     
     <div class="section actions">
-      <button id="undoButton" class="secondary-button" disabled>
-        <i class="material-icons-round">undo</i> Undo Last Action
+      <button id="undoButton" class="secondary-button" disabled aria-label="Undo last action" title="Undo last action">
+        <i class="material-icons-round" aria-hidden="true">undo</i> <span class="button-label">Undo Last Action</span>
       </button>
     </div>
     
-    <div class="section settings">
-      <div class="section-header collapsible" id="preferencesHeader">
-        <h2><i class="material-icons-round">settings</i> Preferences</h2>
-        <i class="material-icons-round toggle-icon">expand_more</i>
+    <div class="section categories">
+      <div class="section-header collapsible" id="categoriesHeader" role="button" aria-expanded="false" aria-controls="categoriesContent">
+        <h2><i class="material-icons-round" aria-hidden="true">label</i> <span class="button-label">Categories</span></h2>
+        <i class="material-icons-round toggle-icon" aria-hidden="true">expand_more</i>
       </div>
-      <div class="section-content" id="preferencesContent">
+      <div class="section-content collapsed" id="categoriesContent">
+        <div class="category-tags" id="categoryTags">
+          <!-- Category tags will be added here dynamically -->
+        </div>
+        <div class="add-category">
+          <input type="text" id="newCategoryInput" placeholder="Enter category names (comma separated)" aria-label="Enter new category names">
+          <button id="addCategoryBtn" class="icon-button" aria-label="Add new categories" title="Add new categories">
+            <i class="material-icons-round" aria-hidden="true">add</i>
+          </button>
+        </div>
+        <div class="category-actions">
+          <button id="resetCategoriesBtn" class="action-button" aria-label="Reset to Default Categories" title="Reset to Default Categories">
+            <i class="material-icons-round" aria-hidden="true">restart_alt</i>
+            <span class="button-label">Reset</span>
+          </button>
+          <button id="deleteAllCategoriesBtn" class="action-button delete-button" aria-label="Delete All Categories" title="Delete All Categories">
+            <i class="material-icons-round" aria-hidden="true">delete_forever</i>
+            <span class="button-label">Delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="section settings">
+      <div class="section-header collapsible" id="preferencesHeader" role="button" aria-expanded="false" aria-controls="preferencesContent">
+        <h2><i class="material-icons-round" aria-hidden="true">settings</i> <span class="button-label">Preferences</span></h2>
+        <i class="material-icons-round toggle-icon" aria-hidden="true">expand_more</i>
+      </div>
+      <div class="section-content collapsed" id="preferencesContent">
         <div class="setting-option">
-          <input type="checkbox" id="enableNotifications" checked>
+          <input type="checkbox" id="enableNotifications" checked aria-label="Enable desktop notifications">
           <label for="enableNotifications">Enable desktop notifications</label>
         </div>
         <div class="setting-option">
-          <label for="analysisTimeout">Analysis timeout (seconds):</label>
-          <input type="number" id="analysisTimeout" min="5" max="60" value="15" class="number-input">
-        </div>
-        <div class="setting-option">
-          <label for="analysisPrompt">Analysis prompt:</label>
-          <textarea id="analysisPrompt" rows="3" class="text-area-input">Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name. Include one relevant emoji before the category name.</textarea>
-        </div>
-        <div class="setting-option">
-          <input type="checkbox" id="enableDebugMode">
+          <input type="checkbox" id="enableDebugMode" aria-label="Enable debug mode">
           <label for="enableDebugMode">Enable debug mode</label>
+        </div>
+        <div class="setting-option timeout-option">
+          <label for="analysisTimeout">Analysis timeout:</label>
+          <input type="number" id="analysisTimeout" min="5" max="60" value="15" class="number-input" aria-label="Analysis timeout in seconds">
+          <span class="unit-label">seconds</span>
+        </div>
+        <div class="setting-option prompt-option">
+          <label for="analysisPrompt">Analysis prompt:</label>
+          <textarea id="analysisPrompt" rows="3" class="text-area-input" aria-label="AI analysis prompt">Analyze this web page content and categorize it into a single category. Choose a concise 1-2 word category name. Include one relevant emoji before the category name.</textarea>
         </div>
       </div>
     </div>

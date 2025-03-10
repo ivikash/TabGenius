@@ -80,7 +80,7 @@ export class TabOrganizer {
       timeoutSeconds: timeoutSeconds,
       modelType: modelConfig.type,
       prompt: prompt,
-      availableCategories: availableCategories.length > 0 ? availableCategories : 'using defaults'
+      availableCategories: Array.isArray(availableCategories) && availableCategories.length > 0 ? availableCategories.length : 'using defaults'
     });
     
     // Process tabs in batches to avoid overwhelming the browser
@@ -195,13 +195,15 @@ export class TabOrganizer {
   async analyzeWithGemini(prompt, tabId) {
     return new Promise((resolve, reject) => {
       // Get the timeout setting or use default
-      chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt'], (result) => {
+      chrome.storage.sync.get(['analysisTimeout', 'analysisPrompt', 'tabSorterCategories'], (result) => {
         const timeoutSeconds = result.analysisTimeout || 15;
         const customPrompt = result.analysisPrompt || prompt;
+        const categories = result.tabSorterCategories || [];
         
         debugLogger.log(`Analyzing tab ${tabId} with Gemini`, {
           timeoutSeconds: timeoutSeconds,
-          prompt: customPrompt
+          prompt: customPrompt,
+          categoriesCount: categories.length
         });
         
         // Set a timeout to prevent getting stuck
@@ -216,7 +218,8 @@ export class TabOrganizer {
           {
             action: 'analyzeWithGemini',
             prompt: customPrompt,
-            tabId: tabId
+            tabId: tabId,
+            categories: categories
           },
           (response) => {
           // Clear the timeout since we got a response

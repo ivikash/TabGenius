@@ -79,7 +79,11 @@ class DebugLogger {
    * @param {any} error - The error object
    */
   error(message, error) {
-    console.error(`${this.prefix} 🛑 ${message}`, error);
+    if (error !== undefined) {
+      console.error(`${this.prefix} 🛑 ${message}`, error);
+    } else {
+      console.error(`${this.prefix} 🛑 ${message}`);
+    }
   }
 
   /**

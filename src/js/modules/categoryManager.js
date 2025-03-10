@@ -159,6 +159,36 @@ export class CategoryManager {
       }
     }
     
+    // Auto-save categories when added
+    if (atLeastOneAdded) {
+      this.saveCategories().then(success => {
+        if (success) {
+          // Show status message
+          const statusElement = document.getElementById('status');
+          if (statusElement) {
+            statusElement.textContent = 'Categories saved automatically';
+            statusElement.className = 'status success';
+            
+            // Hide status after 3 seconds
+            setTimeout(() => {
+              statusElement.className = 'status';
+            }, 3000);
+          }
+          
+          // Show notification based on preference
+          chrome.storage.sync.get('notificationsEnabled', (result) => {
+            if (result.notificationsEnabled !== false) {
+              chrome.runtime.sendMessage({
+                action: 'showNotification',
+                title: 'Success',
+                message: 'Categories updated and saved!'
+              });
+            }
+          });
+        }
+      });
+    }
+    
     return atLeastOneAdded;
   }
 
@@ -170,6 +200,34 @@ export class CategoryManager {
     const index = this.categories.indexOf(category);
     if (index !== -1) {
       this.categories.splice(index, 1);
+      
+      // Auto-save when a category is removed
+      this.saveCategories().then(success => {
+        if (success) {
+          // Show status message
+          const statusElement = document.getElementById('status');
+          if (statusElement) {
+            statusElement.textContent = 'Category removed and changes saved';
+            statusElement.className = 'status success';
+            
+            // Hide status after 3 seconds
+            setTimeout(() => {
+              statusElement.className = 'status';
+            }, 3000);
+          }
+          
+          // Show notification based on preference
+          chrome.storage.sync.get('notificationsEnabled', (result) => {
+            if (result.notificationsEnabled !== false) {
+              chrome.runtime.sendMessage({
+                action: 'showNotification',
+                title: 'Success',
+                message: 'Category removed and changes saved!'
+              });
+            }
+          });
+        }
+      });
     }
   }
 
@@ -198,13 +256,20 @@ export class CategoryManager {
         const removeIcon = document.createElement('i');
         removeIcon.className = 'material-icons-round';
         removeIcon.textContent = 'close';
-        removeIcon.addEventListener('click', (e) => {
+        removeIcon.setAttribute('aria-hidden', 'true');
+        
+        const removeButton = document.createElement('button');
+        removeButton.className = 'tag-remove-button';
+        removeButton.setAttribute('aria-label', `Remove ${category} category`);
+        removeButton.setAttribute('title', `Remove ${category}`);
+        removeButton.appendChild(removeIcon);
+        removeButton.addEventListener('click', (e) => {
           e.stopPropagation();
           this.removeCategory(category);
           tagElement.remove();
         });
         
-        tagElement.appendChild(removeIcon);
+        tagElement.appendChild(removeButton);
         categoryTagsContainer.appendChild(tagElement);
       });
     } catch (error) {
@@ -217,9 +282,6 @@ export class CategoryManager {
    */
   setupEventListeners() {
     try {
-      // We don't need to set up the toggle button here as it's handled by UIManager
-      // The toggle button event listener in UIManager will show/hide the category manager section
-      
       // Add new category
       const addButton = document.getElementById('addCategoryBtn');
       if (addButton) {
@@ -250,67 +312,46 @@ export class CategoryManager {
         });
       }
       
-      // Save categories
-      const saveButton = document.getElementById('saveCategoriesBtn');
-      if (saveButton) {
-        saveButton.addEventListener('click', async () => {
-          // Show loading status
-          const statusElement = document.getElementById('status');
-          if (statusElement) {
-            statusElement.className = 'status loading';
-            statusElement.textContent = 'Saving categories...';
-          }
-          
-          const success = await this.saveCategories();
-          
-          // Update status
-          if (statusElement) {
-            if (success) {
-              statusElement.className = 'status success';
-              statusElement.textContent = 'Categories saved successfully!';
-              
-              // Clear status after 3 seconds
-              setTimeout(() => {
-                if (statusElement.textContent === 'Categories saved successfully!') {
-                  statusElement.textContent = '';
-                  statusElement.className = 'status';
-                }
-              }, 3000);
-            } else {
-              statusElement.className = 'status error';
-              statusElement.textContent = 'Failed to save categories. Please try again.';
-            }
-          }
-        });
-      }
-      
       // Reset categories
       const resetButton = document.getElementById('resetCategoriesBtn');
       if (resetButton) {
         resetButton.addEventListener('click', async () => {
           if (confirm('Are you sure you want to reset to default categories?')) {
-            // Show loading status
-            const statusElement = document.getElementById('status');
-            if (statusElement) {
-              statusElement.className = 'status loading';
-              statusElement.textContent = 'Resetting categories...';
-            }
-            
             await this.resetCategories();
             
-            // Update status
-            if (statusElement) {
-              statusElement.className = 'status success';
-              statusElement.textContent = 'Categories reset to default!';
-              
-              // Clear status after 3 seconds
-              setTimeout(() => {
-                if (statusElement.textContent === 'Categories reset to default!') {
-                  statusElement.textContent = '';
-                  statusElement.className = 'status';
-                }
-              }, 3000);
-            }
+            // Get notification preference
+            chrome.storage.sync.get('notificationsEnabled', (result) => {
+              // Only show notification if enabled
+              if (result.notificationsEnabled !== false) {
+                chrome.runtime.sendMessage({
+                  action: 'showNotification',
+                  title: 'Success',
+                  message: 'Categories reset to default!'
+                });
+              }
+            });
+          }
+        });
+      }
+      
+      // Delete all categories
+      const deleteAllButton = document.getElementById('deleteAllCategoriesBtn');
+      if (deleteAllButton) {
+        deleteAllButton.addEventListener('click', async () => {
+          if (confirm('Are you sure you want to delete ALL categories? This cannot be undone.')) {
+            await this.deleteAllCategories();
+            
+            // Get notification preference
+            chrome.storage.sync.get('notificationsEnabled', (result) => {
+              // Only show notification if enabled
+              if (result.notificationsEnabled !== false) {
+                chrome.runtime.sendMessage({
+                  action: 'showNotification',
+                  title: 'Success',
+                  message: 'All categories deleted!'
+                });
+              }
+            });
           }
         });
       }
@@ -320,10 +361,19 @@ export class CategoryManager {
   }
 
   /**
-   * Get all categories
-   * @returns {Array<string>} - Array of category names
+   * Delete all categories
+   * @returns {Promise<boolean>} - Success status
    */
-  getCategories() {
-    return [...this.categories];
+  async deleteAllCategories() {
+    try {
+      this.categories = [];
+      this.renderCategories();
+      
+      // Save empty categories to storage
+      return await this.saveCategories();
+    } catch (error) {
+      debugLogger.error('Error deleting all categories:', error);
+      return false;
+    }
   }
 }
