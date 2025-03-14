@@ -27,7 +27,13 @@ class Analytics {
       this.processQueue();
       
       this.isInitialized = true;
-      console.log('Analytics tracking initialized');
+      console.log('Analytics tracking initialized with ID:', this.distinctId);
+      
+      // Send a test event to verify connection
+      this.trackEvent('analytics_initialized', {
+        test_property: true,
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
       console.error('Error initializing analytics:', error);
     }
@@ -91,25 +97,31 @@ class Analytics {
         properties: {
           ...properties,
           $lib: 'tab-genius-extension',
-          extension_version: chrome.runtime.getManifest().version,
+          $lib_version: chrome.runtime.getManifest().version,
+          $current_url: 'chrome-extension://' + chrome.runtime.id,
           timestamp: new Date().toISOString()
         }
       };
       
+      console.log('Sending analytics event:', eventName, payload);
+      
       // Use fetch to send the event
-      // Note: This is done in a fire-and-forget manner
-      fetch(`${this.apiHost}/capture/`, {
+      const response = await fetch(`${this.apiHost}/capture/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
-      }).catch(error => {
-        // Silently handle errors to avoid disrupting the user experience
-        console.debug('Analytics event send error:', error);
       });
+      
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.error('PostHog API error:', response.status, responseText);
+      } else {
+        console.log('Analytics event sent successfully:', eventName);
+      }
     } catch (error) {
-      console.debug('Error sending analytics event:', error);
+      console.error('Error sending analytics event:', error);
     }
   }
 
