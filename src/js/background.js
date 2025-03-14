@@ -409,7 +409,7 @@ async function analyzeWithOllama(url, model, prompt, tabId) {
       
       const data = await response.json();
       // Clean up and format the response
-      const category = formatCategory(data.response);
+      const category = formatCategory(data.response, PREDEFINED_CATEGORIES);
       
       return { category };
     } catch (error) {
