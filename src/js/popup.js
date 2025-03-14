@@ -9,12 +9,14 @@ import analytics from './modules/analytics.js';
 document.addEventListener('DOMContentLoaded', async () => {
   debugLogger.log('Popup initialized');
   
-  // Track popup view
-  analytics.trackEvent('popup_opened', {
-    screen_width: window.innerWidth,
-    screen_height: window.innerHeight,
-    timestamp: new Date().toISOString()
-  });
+  // Track popup view - only in popup context
+  if (typeof window !== 'undefined') {
+    analytics.trackEvent('popup_opened', {
+      screen_width: window.innerWidth,
+      screen_height: window.innerHeight,
+      timestamp: new Date().toISOString()
+    });
+  }
   
   const tabStateManager = new TabStateManager();
   const tabSorter = new TabSorter(tabStateManager);

@@ -10,7 +10,9 @@ class Analytics {
     this.apiHost = 'https://us.i.posthog.com';
     this.queue = [];
     this.distinctId = null;
-    this.init();
+    
+    // Initialize asynchronously to avoid blocking
+    setTimeout(() => this.init(), 0);
   }
 
   /**
