@@ -1,11 +1,12 @@
 /**
- * Manages the categories for tab organization
+ * Category Manager for Tab Genius extension
+ * Handles category management and UI interactions
  */
 import debugLogger from './debugLogger.js';
+import analytics from './analytics.js';
 
 export class CategoryManager {
   constructor() {
-    this.categories = [];
     this.defaultCategories = [
       'News', 'Shopping', 'Media', 'Education', 'Social', 
       'Tech', 'Games', 'Finance', 'Travel', 'Food',
@@ -14,362 +15,260 @@ export class CategoryManager {
       'Leadership', 'Research', 'Career', 'Networking', 'Analytics',
       'Marketing', 'Design', 'Documentation', 'Communication', 'Misc'
     ];
+    this.categories = [];
+    this.categoryTagsContainer = null;
   }
 
   /**
    * Initialize the category manager
-   * @returns {Promise<void>}
    */
   async init() {
     try {
+      this.categoryTagsContainer = document.getElementById('categoryTags');
+      
+      // Load categories from storage
       await this.loadCategories();
-      this.renderCategories();
+      
+      // Set up event listeners
       this.setupEventListeners();
-      debugLogger.log('CategoryManager initialized', { 
-        categoriesCount: this.categories.length,
-        usingDefaults: JSON.stringify(this.categories) === JSON.stringify(this.defaultCategories)
-      });
+      
+      debugLogger.log('Category manager initialized with categories:', this.categories);
     } catch (error) {
-      debugLogger.error('Error initializing CategoryManager:', error);
-      // Use default categories if initialization fails
-      this.categories = [...this.defaultCategories];
-      this.renderCategories();
-      this.setupEventListeners();
+      debugLogger.error('Error initializing category manager:', error);
+      analytics.trackError('category_manager_init', error.message);
     }
   }
 
   /**
    * Load categories from storage
-   * @returns {Promise<void>}
    */
   async loadCategories() {
     try {
-      const result = await new Promise((resolve, reject) => {
-        chrome.storage.sync.get('tabSorterCategories', (data) => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
-          } else {
-            resolve(data);
-          }
-        });
-      });
+      const result = await chrome.storage.sync.get('tabSorterCategories');
       
       if (result && result.tabSorterCategories && Array.isArray(result.tabSorterCategories)) {
         this.categories = result.tabSorterCategories;
-        debugLogger.log('Loaded custom categories', { 
-          count: this.categories.length,
-          categories: this.categories
-        });
       } else {
-        // Use default categories if none are saved
         this.categories = [...this.defaultCategories];
-        debugLogger.log('Using default categories', { 
-          count: this.categories.length
-        });
+        // Save default categories to storage
+        await chrome.storage.sync.set({ tabSorterCategories: this.categories });
       }
+      
+      this.renderCategories();
     } catch (error) {
-      debugLogger.error('Error accessing storage:', error);
-      // Use default categories if there's an exception
+      debugLogger.error('Error loading categories:', error);
+      analytics.trackError('load_categories', error.message);
+      // Use default categories as fallback
       this.categories = [...this.defaultCategories];
+      this.renderCategories();
     }
   }
 
   /**
-   * Save categories to storage
-   * @returns {Promise<boolean>} - Whether the save was successful
+   * Set up event listeners for category management
    */
-  async saveCategories() {
-    return new Promise((resolve) => {
-      try {
-        debugLogger.log('Saving categories', { count: this.categories.length });
-        chrome.storage.sync.set({ 'tabSorterCategories': this.categories }, () => {
-          if (chrome.runtime.lastError) {
-            debugLogger.error('Error saving categories:', chrome.runtime.lastError);
-            resolve(false);
-            return;
-          }
-          
-          debugLogger.log('Categories saved successfully');
-          
-          // Also update the background script with the new categories
-          try {
-            // Check if notifications are enabled
-            chrome.storage.sync.get('notificationsEnabled', (result) => {
-              const notificationsEnabled = result.notificationsEnabled !== false;
-              
-              chrome.runtime.sendMessage({
-                action: 'updateCategories',
-                categories: this.categories,
-                showNotification: notificationsEnabled
-              });
-            });
-          } catch (msgError) {
-            debugLogger.warn('Could not update background script:', msgError);
-          }
-          
-          resolve(true);
-        });
-      } catch (error) {
-        debugLogger.error('Error accessing storage:', error);
-        resolve(false);
-      }
+  setupEventListeners() {
+    // Add category button
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    if (addCategoryBtn) {
+      addCategoryBtn.addEventListener('click', () => this.addNewCategories());
+    }
+    
+    // New category input (handle Enter key)
+    const newCategoryInput = document.getElementById('newCategoryInput');
+    if (newCategoryInput) {
+      newCategoryInput.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+          this.addNewCategories();
+        }
+      });
+    }
+    
+    // Reset categories button
+    const resetCategoriesBtn = document.getElementById('resetCategoriesBtn');
+    if (resetCategoriesBtn) {
+      resetCategoriesBtn.addEventListener('click', () => this.resetToDefaultCategories());
+    }
+    
+    // Delete all categories button
+    const deleteAllCategoriesBtn = document.getElementById('deleteAllCategoriesBtn');
+    if (deleteAllCategoriesBtn) {
+      deleteAllCategoriesBtn.addEventListener('click', () => this.deleteAllCategories());
+    }
+  }
+
+  /**
+   * Render categories in the UI
+   */
+  renderCategories() {
+    if (!this.categoryTagsContainer) return;
+    
+    // Clear existing categories
+    this.categoryTagsContainer.innerHTML = '';
+    
+    // Add each category as a tag
+    this.categories.forEach(category => {
+      const tag = document.createElement('div');
+      tag.className = 'category-tag';
+      tag.setAttribute('data-category', category);
+      
+      const tagText = document.createElement('span');
+      tagText.textContent = category;
+      tag.appendChild(tagText);
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-tag';
+      deleteBtn.innerHTML = '&times;';
+      deleteBtn.setAttribute('aria-label', `Remove ${category} category`);
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.removeCategory(category);
+      });
+      
+      tag.appendChild(deleteBtn);
+      this.categoryTagsContainer.appendChild(tag);
     });
   }
 
   /**
-   * Reset categories to default
-   * @returns {Promise<void>}
+   * Add new categories from input
    */
-  async resetCategories() {
-    this.categories = [...this.defaultCategories];
-    await this.saveCategories();
-    this.renderCategories();
-  }
-
-  /**
-   * Add a new category or multiple comma-separated categories
-   * @param {string} categoryInput - Category name(s) to add
-   * @returns {boolean} - Whether at least one category was added
-   */
-  addCategory(categoryInput) {
-    // Split by comma to support multiple categories at once
-    const categoryNames = categoryInput.split(',').map(cat => cat.trim()).filter(cat => cat);
-    
-    if (categoryNames.length === 0) {
-      return false;
-    }
-    
-    let atLeastOneAdded = false;
-    
-    for (const category of categoryNames) {
-      // Format the category (capitalize first letter of each word)
-      const formattedCategory = category.split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
+  async addNewCategories() {
+    try {
+      const input = document.getElementById('newCategoryInput');
+      if (!input || !input.value.trim()) return;
       
-      // Check if category already exists
-      if (!this.categories.includes(formattedCategory)) {
-        // Add the category
-        this.categories.push(formattedCategory);
-        atLeastOneAdded = true;
+      // Split by comma and trim whitespace
+      const newCategories = input.value
+        .split(',')
+        .map(cat => cat.trim())
+        .filter(cat => cat && cat.length > 0);
+      
+      if (newCategories.length === 0) return;
+      
+      // Format categories (capitalize first letter)
+      const formattedCategories = newCategories.map(cat => 
+        cat.charAt(0).toUpperCase() + cat.slice(1)
+      );
+      
+      // Add new categories (avoid duplicates)
+      const uniqueNewCategories = formattedCategories.filter(cat => 
+        !this.categories.includes(cat)
+      );
+      
+      if (uniqueNewCategories.length > 0) {
+        this.categories = [...this.categories, ...uniqueNewCategories];
+        
+        // Save to storage
+        await chrome.storage.sync.set({ tabSorterCategories: this.categories });
+        
+        // Track category addition
+        analytics.trackEvent('categories_added', {
+          count: uniqueNewCategories.length,
+          categories: uniqueNewCategories
+        });
+        
+        // Update background script
+        chrome.runtime.sendMessage({
+          action: 'updateCategories',
+          categories: this.categories,
+          showNotification: false
+        });
+        
+        // Re-render categories
+        this.renderCategories();
       }
+      
+      // Clear input
+      input.value = '';
+    } catch (error) {
+      debugLogger.error('Error adding categories:', error);
+      analytics.trackError('add_categories', error.message);
     }
-    
-    // Auto-save categories when added
-    if (atLeastOneAdded) {
-      this.saveCategories().then(success => {
-        if (success) {
-          // Show status message
-          const statusElement = document.getElementById('status');
-          if (statusElement) {
-            statusElement.textContent = 'Categories saved automatically';
-            statusElement.className = 'status success';
-            
-            // Hide status after 3 seconds
-            setTimeout(() => {
-              statusElement.className = 'status';
-            }, 3000);
-          }
-          
-          // Show notification based on preference
-          chrome.storage.sync.get('notificationsEnabled', (result) => {
-            if (result.notificationsEnabled !== false) {
-              chrome.runtime.sendMessage({
-                action: 'showNotification',
-                title: 'Success',
-                message: 'Categories updated and saved!'
-              });
-            }
-          });
-        }
-      });
-    }
-    
-    return atLeastOneAdded;
   }
 
   /**
    * Remove a category
-   * @param {string} category - Category name to remove
+   * @param {string} category - Category to remove
    */
-  removeCategory(category) {
-    const index = this.categories.indexOf(category);
-    if (index !== -1) {
-      this.categories.splice(index, 1);
+  async removeCategory(category) {
+    try {
+      this.categories = this.categories.filter(cat => cat !== category);
       
-      // Auto-save when a category is removed
-      this.saveCategories().then(success => {
-        if (success) {
-          // Show status message
-          const statusElement = document.getElementById('status');
-          if (statusElement) {
-            statusElement.textContent = 'Category removed and changes saved';
-            statusElement.className = 'status success';
-            
-            // Hide status after 3 seconds
-            setTimeout(() => {
-              statusElement.className = 'status';
-            }, 3000);
-          }
-          
-          // Show notification based on preference
-          chrome.storage.sync.get('notificationsEnabled', (result) => {
-            if (result.notificationsEnabled !== false) {
-              chrome.runtime.sendMessage({
-                action: 'showNotification',
-                title: 'Success',
-                message: 'Category removed and changes saved!'
-              });
-            }
-          });
-        }
+      // Save to storage
+      await chrome.storage.sync.set({ tabSorterCategories: this.categories });
+      
+      // Track category removal
+      analytics.trackEvent('category_removed', { category });
+      
+      // Update background script
+      chrome.runtime.sendMessage({
+        action: 'updateCategories',
+        categories: this.categories,
+        showNotification: false
       });
+      
+      // Re-render categories
+      this.renderCategories();
+    } catch (error) {
+      debugLogger.error('Error removing category:', error);
+      analytics.trackError('remove_category', error.message);
     }
   }
 
   /**
-   * Render categories as tags in the UI
+   * Reset to default categories
    */
-  renderCategories() {
+  async resetToDefaultCategories() {
     try {
-      const categoryTagsContainer = document.getElementById('categoryTags');
-      if (!categoryTagsContainer) {
-        console.error('Category tags container not found');
-        return;
-      }
+      this.categories = [...this.defaultCategories];
       
-      categoryTagsContainer.innerHTML = '';
+      // Save to storage
+      await chrome.storage.sync.set({ tabSorterCategories: this.categories });
       
-      this.categories.forEach(category => {
-        const tagElement = document.createElement('div');
-        tagElement.className = 'category-tag';
-        tagElement.dataset.category = category;
-        
-        const tagText = document.createElement('span');
-        tagText.textContent = category;
-        tagElement.appendChild(tagText);
-        
-        const removeIcon = document.createElement('i');
-        removeIcon.className = 'material-icons-round';
-        removeIcon.textContent = 'close';
-        removeIcon.setAttribute('aria-hidden', 'true');
-        
-        const removeButton = document.createElement('button');
-        removeButton.className = 'tag-remove-button';
-        removeButton.setAttribute('aria-label', `Remove ${category} category`);
-        removeButton.setAttribute('title', `Remove ${category}`);
-        removeButton.appendChild(removeIcon);
-        removeButton.addEventListener('click', (e) => {
-          e.stopPropagation();
-          this.removeCategory(category);
-          tagElement.remove();
-        });
-        
-        tagElement.appendChild(removeButton);
-        categoryTagsContainer.appendChild(tagElement);
+      // Track reset action
+      analytics.trackEvent('categories_reset');
+      
+      // Update background script
+      chrome.runtime.sendMessage({
+        action: 'updateCategories',
+        categories: this.categories,
+        showNotification: true
       });
+      
+      // Re-render categories
+      this.renderCategories();
     } catch (error) {
-      console.error('Error rendering categories:', error);
-    }
-  }
-
-  /**
-   * Setup event listeners for category management
-   */
-  setupEventListeners() {
-    try {
-      // Add new category
-      const addButton = document.getElementById('addCategoryBtn');
-      if (addButton) {
-        addButton.addEventListener('click', () => {
-          const newCategoryInput = document.getElementById('newCategoryInput');
-          const categoryInput = newCategoryInput.value.trim();
-          
-          if (categoryInput) {
-            const added = this.addCategory(categoryInput);
-            if (added) {
-              this.renderCategories();
-              newCategoryInput.value = '';
-            } else {
-              // Show error if no categories were added (all already exist)
-              alert('All categories already exist!');
-            }
-          }
-        });
-      }
-      
-      // Add category on Enter key
-      const newCategoryInput = document.getElementById('newCategoryInput');
-      if (newCategoryInput) {
-        newCategoryInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
-            document.getElementById('addCategoryBtn')?.click();
-          }
-        });
-      }
-      
-      // Reset categories
-      const resetButton = document.getElementById('resetCategoriesBtn');
-      if (resetButton) {
-        resetButton.addEventListener('click', async () => {
-          if (confirm('Are you sure you want to reset to default categories?')) {
-            await this.resetCategories();
-            
-            // Get notification preference
-            chrome.storage.sync.get('notificationsEnabled', (result) => {
-              // Only show notification if enabled
-              if (result.notificationsEnabled !== false) {
-                chrome.runtime.sendMessage({
-                  action: 'showNotification',
-                  title: 'Success',
-                  message: 'Categories reset to default!'
-                });
-              }
-            });
-          }
-        });
-      }
-      
-      // Delete all categories
-      const deleteAllButton = document.getElementById('deleteAllCategoriesBtn');
-      if (deleteAllButton) {
-        deleteAllButton.addEventListener('click', async () => {
-          if (confirm('Are you sure you want to delete ALL categories? This cannot be undone.')) {
-            await this.deleteAllCategories();
-            
-            // Get notification preference
-            chrome.storage.sync.get('notificationsEnabled', (result) => {
-              // Only show notification if enabled
-              if (result.notificationsEnabled !== false) {
-                chrome.runtime.sendMessage({
-                  action: 'showNotification',
-                  title: 'Success',
-                  message: 'All categories deleted!'
-                });
-              }
-            });
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error setting up event listeners:', error);
+      debugLogger.error('Error resetting categories:', error);
+      analytics.trackError('reset_categories', error.message);
     }
   }
 
   /**
    * Delete all categories
-   * @returns {Promise<boolean>} - Success status
    */
   async deleteAllCategories() {
     try {
       this.categories = [];
-      this.renderCategories();
       
-      // Save empty categories to storage
-      return await this.saveCategories();
+      // Save to storage
+      await chrome.storage.sync.set({ tabSorterCategories: this.categories });
+      
+      // Track delete all action
+      analytics.trackEvent('categories_deleted_all');
+      
+      // Update background script
+      chrome.runtime.sendMessage({
+        action: 'updateCategories',
+        categories: this.categories,
+        showNotification: true
+      });
+      
+      // Re-render categories
+      this.renderCategories();
     } catch (error) {
       debugLogger.error('Error deleting all categories:', error);
-      return false;
+      analytics.trackError('delete_all_categories', error.message);
     }
   }
 }

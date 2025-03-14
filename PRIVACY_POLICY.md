@@ -1,6 +1,6 @@
 # Tab Genius Privacy Policy
 
-*Last Updated: March 10, 2025*
+*Last Updated: March 14, 2025*
 
 ## Introduction
 
@@ -16,6 +16,13 @@ Tab Genius collects the following types of data to provide its tab organization 
 
 3. **Extension Settings**: We store your preferences for the extension, such as your chosen categorization settings, AI model preferences, and custom categories.
 
+4. **Usage Analytics**: We collect anonymous usage data through PostHog analytics to help improve the extension. This includes:
+   - Extension installation and updates
+   - Feature usage (e.g., sorting, organizing tabs)
+   - Performance metrics
+   - Error events
+   No personally identifiable information is included in this data.
+
 ## How We Use Your Information
 
 The information we collect is used solely for the following purposes:
@@ -26,15 +33,19 @@ The information we collect is used solely for the following purposes:
 
 3. **User Preferences**: Storing your settings to provide a consistent experience across browser sessions.
 
+4. **Product Improvement**: Anonymous usage analytics help us understand how the extension is used, identify issues, and improve functionality.
+
 ## Data Storage and Sharing
 
 - **Local Processing**: When using local AI models (like Ollama), all content analysis happens entirely on your device. No tab content or URLs are transmitted to external servers.
 
 - **Chrome's Built-in AI**: When using Chrome's built-in Gemini model, data processing occurs within the browser environment according to Google Chrome's privacy practices.
 
-- **No Third-Party Sharing**: We do not sell, rent, or share any of your data with third parties.
+- **Analytics Data**: Anonymous usage data is sent to PostHog analytics servers to help improve the extension. This data does not include any personally identifiable information, tab content, or URLs.
 
-- **No External Servers**: Tab Genius does not maintain any external servers that collect or store your data.
+- **No Third-Party Sharing**: We do not sell, rent, or share any of your data with third parties beyond the anonymous analytics described above.
+
+- **No External Servers**: Tab Genius does not maintain any external servers that collect or store your data beyond the analytics service.
 
 ## Data Retention
 
@@ -47,6 +58,8 @@ The information we collect is used solely for the following purposes:
 - **Optional Features**: You can choose which AI model to use for categorization, including privacy-focused local options.
 
 - **Extension Permissions**: You can review the permissions required by Tab Genius in your browser's extension settings.
+
+- **Analytics Opt-Out**: While we don't currently provide a built-in opt-out for analytics, you can use browser privacy features or content blockers to prevent analytics data collection if desired.
 
 - **Uninstallation**: You can uninstall the extension at any time, which will remove all locally stored settings.
 

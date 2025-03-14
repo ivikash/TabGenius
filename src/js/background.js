@@ -3,6 +3,7 @@
  * Handles API calls and tab content extraction
  */
 import debugLogger from './modules/debugLogger.js';
+import analytics from './modules/analytics.js';
 
 // Predefined categories for consistent grouping
 let PREDEFINED_CATEGORIES = [
@@ -37,12 +38,16 @@ chrome.storage.sync.get(null, (allSettings) => {
 });
 
 // Load user-defined categories from storage on startup
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   try {
     debugLogger.log('Extension installed/updated', {
       version: chrome.runtime.getManifest().version,
-      installTime: new Date().toISOString()
+      installTime: new Date().toISOString(),
+      reason: details.reason
     });
+    
+    // Track installation or update with PostHog
+    analytics.trackInstall(details.reason);
     
     chrome.storage.sync.get('tabSorterCategories', (result) => {
       if (chrome.runtime.lastError) {
@@ -92,6 +97,7 @@ chrome.runtime.onInstalled.addListener(() => {
     });
   } catch (error) {
     debugLogger.error('Error during extension initialization:', error);
+    analytics.trackError('initialization', error.message);
   }
 });
 

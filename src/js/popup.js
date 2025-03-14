@@ -4,6 +4,7 @@ import { UIManager } from './modules/uiManager.js';
 import { TabStateManager } from './modules/tabStateManager.js';
 import { CategoryManager } from './modules/categoryManager.js';
 import debugLogger from './modules/debugLogger.js';
+import analytics from './modules/analytics.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   debugLogger.log('Popup initialized');
@@ -119,9 +120,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       uiManager.showStatus('Sorting tabs by title...', 'loading');
       debugLogger.log('Starting sort by title');
       
+      const startTime = performance.now();
       await debugLogger.time('Sort by title', async () => {
         await tabSorter.sortByTitle();
       });
+      const duration = performance.now() - startTime;
+      
+      // Track the sort action
+      const tabs = await chrome.tabs.query({ currentWindow: true });
+      analytics.trackSort('title', tabs.length, duration);
       
       uiManager.showStatus('Tabs sorted by title!', 'success');
       debugLogger.log('Tabs sorted by title successfully');
@@ -137,6 +144,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       debugLogger.error('Error sorting by title:', error);
+      analytics.trackError('sort_by_title', error.message);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -162,9 +170,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       uiManager.showStatus('Sorting tabs by URL...', 'loading');
       debugLogger.log('Starting sort by URL');
       
+      const startTime = performance.now();
       await debugLogger.time('Sort by URL', async () => {
         await tabSorter.sortByUrl();
       });
+      const duration = performance.now() - startTime;
+      
+      // Track the sort action
+      const tabs = await chrome.tabs.query({ currentWindow: true });
+      analytics.trackSort('url', tabs.length, duration);
       
       uiManager.showStatus('Tabs sorted by URL!', 'success');
       debugLogger.log('Tabs sorted by URL successfully');
@@ -180,6 +194,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       debugLogger.error('Error sorting by URL:', error);
+      analytics.trackError('sort_by_url', error.message);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -231,9 +246,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       uiManager.showStatus('Organizing tabs by content...', 'loading');
       
+      const startTime = performance.now();
       await debugLogger.time('Tab organization', async () => {
         await tabOrganizer.organizeByContent(modelConfig);
       });
+      const duration = performance.now() - startTime;
+      
+      // Get tab groups to count them
+      const tabGroups = await chrome.tabGroups.query({ windowId: chrome.windows.WINDOW_ID_CURRENT });
+      const tabs = await chrome.tabs.query({ currentWindow: true });
+      
+      // Track the organization action
+      analytics.trackOrganize(modelType, tabs.length, duration, tabGroups.length);
       
       uiManager.showStatus('Tabs organized by content!', 'success');
       debugLogger.log('Tab organization completed successfully');
@@ -249,6 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       debugLogger.error('Error organizing by content:', error);
+      analytics.trackError('organize_by_content', error.message);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -275,7 +300,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       await tabStateManager.saveCurrentState();
       
       uiManager.showStatus('Removing all tab groups...', 'loading');
+      
+      const startTime = performance.now();
       await tabStateManager.ungroupAllTabs();
+      const duration = performance.now() - startTime;
+      
+      // Track the ungroup action
+      const tabs = await chrome.tabs.query({ currentWindow: true });
+      analytics.trackEvent('tabs_ungrouped', {
+        tab_count: tabs.length,
+        duration_ms: duration
+      });
+      
       uiManager.showStatus('All tab groups removed!', 'success');
       
       // Enable undo button and re-enable action buttons
@@ -289,6 +325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error ungrouping tabs:', error);
+      analytics.trackError('ungroup_tabs', error.message);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -318,7 +355,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       
       uiManager.showStatus('Restoring previous tab state...', 'loading');
+      
+      const startTime = performance.now();
       const success = await tabStateManager.restorePreviousState();
+      const duration = performance.now() - startTime;
+      
+      // Track the undo action
+      analytics.trackEvent('undo_action', {
+        success: success,
+        duration_ms: duration
+      });
       
       if (success) {
         uiManager.showStatus('Previous tab state restored!', 'success');
@@ -338,6 +384,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       uiManager.showStatus(`Error: ${error.message}`, 'error');
       console.error('Error undoing action:', error);
+      analytics.trackError('undo_action', error.message);
       
       // Re-enable action buttons
       uiManager.setButtonsState({
@@ -357,6 +404,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       notificationsCheckbox.checked = result.notificationsEnabled !== false;
       notificationsCheckbox.addEventListener('change', (e) => {
         chrome.storage.sync.set({ notificationsEnabled: e.target.checked });
+        analytics.trackSettingChange('notifications', e.target.checked);
       });
     }
     
@@ -369,6 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const value = Math.min(Math.max(parseInt(e.target.value) || 15, 5), 60);
         e.target.value = value;
         chrome.storage.sync.set({ analysisTimeout: value });
+        analytics.trackSettingChange('analysis_timeout', value);
       });
     }
     
@@ -379,6 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       debugModeCheckbox.addEventListener('change', (e) => {
         debugLogger.setDebugMode(e.target.checked);
         debugLogger.log('Debug mode changed:', e.target.checked);
+        analytics.trackSettingChange('debug_mode', e.target.checked);
       });
     }
   });
