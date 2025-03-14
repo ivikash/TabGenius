@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Genius",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Sort and organize Chrome tabs based on title, URL, or content using AI",
   "permissions": [
     "tabs",
