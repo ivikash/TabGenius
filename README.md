@@ -73,10 +73,14 @@ To use Chrome's built-in Gemini Nano model:
 ### Using Ollama
 To use Ollama for tab organization:
 1. Make sure you have Ollama installed and running locally
-2. Select "Ollama" from the AI Model dropdown
-3. Configure the Ollama URL (default: http://localhost:11434)
-4. Specify the model name (default: llama3)
-5. Click "Organize by Content"
+2. Run Ollama with the following command to allow browser extension access:
+   ```
+   OLLAMA_ORIGINS=chrome-extension://*,moz-extension://*,safari-web-extension://* ollama serve
+   ```
+3. Select "Ollama" from the AI Model dropdown
+4. Configure the Ollama URL (default: http://localhost:11434)
+5. Specify the model name (default: llama3)
+6. Click "Organize by Content"
 
 ## Perfect For
 - Researchers juggling multiple sources
